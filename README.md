@@ -71,6 +71,46 @@ All navigation headers, titles, and site metadata read directly from this file.
 └── tsconfig.json         # TypeScript configuration
 ```
 
+## Database & Local Supabase
+
+This project uses [Supabase](https://supabase.com/) for PostgreSQL database storage, Row Level Security (RLS), authentication, and file storage.
+
+### 1. Local Supabase Setup
+Start local Supabase containers (requires Docker):
+```bash
+npm run db:start
+```
+Once started, the Supabase local dashboard (Studio) is available at `http://localhost:54323`, and the API gateway at `http://127.0.0.1:54321`.
+
+### 2. Database Reset & Migrations
+To reset the local database and run all migrations from `supabase/migrations/`:
+```bash
+npm run db:reset
+```
+
+### 3. Type Generation
+To generate TypeScript definitions from the local database schema into `src/lib/database.types.ts`:
+```bash
+npm run db:types
+```
+
+### 4. Running Database RLS Tests
+To run database and Row Level Security (RLS) tests:
+```bash
+npm run db:test
+```
+
+### 5. Seeding Fake Test Fixtures
+To populate the local database with sample development fixtures:
+```bash
+# Seed directly into running Supabase instance:
+node scripts/seed-fixtures.mjs
+
+# Or generate/preview raw SQL statements:
+node scripts/seed-fixtures.mjs --sql
+```
+> **Note:** All fixture data in `supabase/fixtures/fake-tenants.json` is synthetic and strictly labeled `[FAKE]` for local testing only.
+
 ## Scripts
 
 - `npm run dev` - Run development server
@@ -78,3 +118,9 @@ All navigation headers, titles, and site metadata read directly from this file.
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - Run TypeScript typecheck
+- `npm run db:start` - Start local Supabase instance
+- `npm run db:reset` - Reset database and run migrations
+- `npm run db:types` - Generate TypeScript types from local schema
+- `npm run db:test` - Run Supabase db tests
+- `npm run test` - Run tests with Vitest
+- `npm run check:schema` - Verify schema synchronization

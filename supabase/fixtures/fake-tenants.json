@@ -1,0 +1,285 @@
+{
+  "_comment": "FAKE DATA FOR LOCAL TESTING ONLY - NOT REAL ENTITIES OR TAX DATA",
+  "notice": "All firm names, client names, GSTINs, invoice numbers, supplier names, and transaction figures in this file are completely synthetic mock data created strictly for local development and integration testing.",
+  "firms": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "Acme Tax Consultants [FAKE]",
+      "created_by": "00000000-0000-4000-8000-000000000001",
+      "members": [
+        {
+          "firm_id": "11111111-1111-4111-8111-111111111111",
+          "user_id": "00000000-0000-4000-8000-000000000001",
+          "role": "admin"
+        },
+        {
+          "firm_id": "11111111-1111-4111-8111-111111111111",
+          "user_id": "00000000-0000-4000-8000-000000000002",
+          "role": "staff"
+        }
+      ]
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "name": "Apex Accounting [FAKE]",
+      "created_by": "00000000-0000-4000-8000-000000000003",
+      "members": [
+        {
+          "firm_id": "22222222-2222-4222-8222-222222222222",
+          "user_id": "00000000-0000-4000-8000-000000000003",
+          "role": "admin"
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "legal_name": "Shree Ganesh Stationery & Xerox [FAKE]",
+      "trade_name": "Ganesh Stationery [FAKE]",
+      "gstin": "27AAAAA0000A1Z5",
+      "state_code": "27",
+      "scheme": "regular",
+      "aato_band": "below_40l",
+      "fy_start_month": 4,
+      "language": "en",
+      "sells_exempt": false,
+      "sells_taxable": true,
+      "access": [
+        {
+          "firm_id": "11111111-1111-4111-8111-111111111111",
+          "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "user_id": "00000000-0000-4000-8000-000000000011",
+          "role": "owner"
+        }
+      ]
+    },
+    {
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "legal_name": "Vidyarthi Book Depot & General Store [FAKE]",
+      "trade_name": "Vidyarthi Books [FAKE]",
+      "gstin": "27BBBBB1111B1Z3",
+      "state_code": "27",
+      "scheme": "composition",
+      "aato_band": "40l_to_1_5cr",
+      "fy_start_month": 4,
+      "language": "mr",
+      "sells_exempt": true,
+      "sells_taxable": true,
+      "access": [
+        {
+          "firm_id": "11111111-1111-4111-8111-111111111111",
+          "client_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          "user_id": "00000000-0000-4000-8000-000000000012",
+          "role": "owner"
+        }
+      ]
+    },
+    {
+      "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "firm_id": "22222222-2222-4222-8222-222222222222",
+      "legal_name": "Sai Krupa Kirana & Provisions [FAKE]",
+      "trade_name": "Sai Krupa Stores [FAKE]",
+      "gstin": "24CCCCC2222C1Z1",
+      "state_code": "24",
+      "scheme": "qrmp",
+      "aato_band": "40l_to_1_5cr",
+      "fy_start_month": 4,
+      "language": "hi",
+      "sells_exempt": true,
+      "sells_taxable": true,
+      "access": [
+        {
+          "firm_id": "22222222-2222-4222-8222-222222222222",
+          "client_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "user_id": "00000000-0000-4000-8000-000000000013",
+          "role": "owner"
+        }
+      ]
+    }
+  ],
+  "suppliers": [
+    {
+      "id": "33333333-3333-4333-8333-333333333331",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "gstin": "27SUPPL1111S1Z8",
+      "name": "National Paper Mills Ltd [FAKE]",
+      "filing_status": "filed",
+      "last_checked_at": "2026-10-15T10:30:00Z",
+      "notes": "Wholesale paper and print supplies [FAKE]"
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333332",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "gstin": "27SUPPL2222S1Z6",
+      "name": "Hindustan Pens & Plastics [FAKE]",
+      "filing_status": "filed",
+      "last_checked_at": "2026-10-14T11:00:00Z",
+      "notes": "Writing instruments and stationery vendor [FAKE]"
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "firm_id": "22222222-2222-4222-8222-222222222222",
+      "client_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "gstin": "24SUPPL3333S1Z4",
+      "name": "Gujarat FMCG Distributors [FAKE]",
+      "filing_status": "filed",
+      "last_checked_at": "2026-10-16T09:15:00Z",
+      "notes": "Wholesale packaged goods distributor [FAKE]"
+    }
+  ],
+  "documents": [
+    {
+      "id": "44444444-4444-4444-8444-444444444441",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "kind": "purchase_bill",
+      "storage_path": "clients/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/purchases/fake_bill_oct_01.pdf",
+      "original_name": "paper_supplies_oct2026_fake.pdf",
+      "mime_type": "application/pdf",
+      "size_bytes": 145230,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "done",
+      "uploaded_by": "00000000-0000-4000-8000-000000000001",
+      "period_fp": "102026"
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444442",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "kind": "gstr2b_file",
+      "storage_path": "clients/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/gstr2b/gstr2b_102026_fake.json",
+      "original_name": "GSTR2B_27AAAAA0000A1Z5_102026_fake.json",
+      "mime_type": "application/json",
+      "size_bytes": 48200,
+      "sha256": "1111111122222222333333334444444455555555666666667777777788888888",
+      "status": "done",
+      "uploaded_by": "00000000-0000-4000-8000-000000000001",
+      "period_fp": "102026"
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444443",
+      "firm_id": "22222222-2222-4222-8222-222222222222",
+      "client_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "kind": "sales_file",
+      "storage_path": "clients/cccccccc-cccc-4ccc-8ccc-cccccccccccc/sales/sales_register_fake.csv",
+      "original_name": "daily_sales_oct2026_fake.csv",
+      "mime_type": "text/csv",
+      "size_bytes": 12450,
+      "sha256": "aaaaaaaa11111111bbbbbbbb22222222cccccccc33333333dddddddd44444444",
+      "status": "done",
+      "uploaded_by": "00000000-0000-4000-8000-000000000003",
+      "period_fp": "102026"
+    }
+  ],
+  "invoices": [
+    {
+      "id": "55555555-5555-4555-8555-555555555551",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "supplier_id": "33333333-3333-4333-8333-333333333331",
+      "document_id": "44444444-4444-4444-8444-444444444441",
+      "invoice_no": "NPM/26-27/0412 [FAKE]",
+      "invoice_no_norm": "NPM26270412",
+      "invoice_date": "2026-10-05",
+      "place_of_supply": "27",
+      "taxable_value": 12000.0,
+      "cgst": 1080.0,
+      "sgst": 1080.0,
+      "igst": 0.0,
+      "cess": 0.0,
+      "round_off": 0.0,
+      "total": 14160.0,
+      "status": "approved",
+      "source": "extracted",
+      "itc_state": "eligible",
+      "period_fp": "102026"
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555552",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "supplier_id": "33333333-3333-4333-8333-333333333332",
+      "document_id": null,
+      "invoice_no": "HPP/OCT/0089 [FAKE]",
+      "invoice_no_norm": "HPPOCT0089",
+      "invoice_date": "2026-10-12",
+      "place_of_supply": "27",
+      "taxable_value": 5500.0,
+      "cgst": 495.0,
+      "sgst": 495.0,
+      "igst": 0.0,
+      "cess": 0.0,
+      "round_off": 0.0,
+      "total": 6490.0,
+      "status": "draft",
+      "source": "manual",
+      "itc_state": "eligible",
+      "period_fp": "102026"
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555553",
+      "firm_id": "22222222-2222-4222-8222-222222222222",
+      "client_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "supplier_id": "33333333-3333-4333-8333-333333333333",
+      "document_id": null,
+      "invoice_no": "GFD-INV-782 [FAKE]",
+      "invoice_no_norm": "GFDINV782",
+      "invoice_date": "2026-10-18",
+      "place_of_supply": "24",
+      "taxable_value": 25000.0,
+      "cgst": 1250.0,
+      "sgst": 1250.0,
+      "igst": 0.0,
+      "cess": 0.0,
+      "round_off": 0.0,
+      "total": 27500.0,
+      "status": "needs_review",
+      "source": "imported",
+      "itc_state": "pending",
+      "period_fp": "102026"
+    }
+  ],
+  "sales_entries": [
+    {
+      "id": "66666666-6666-4666-8666-666666666661",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "entry_date": "2026-10-01",
+      "cash_total": 3400.0,
+      "upi_total": 5200.0,
+      "taxable_sales": 7500.0,
+      "exempt_sales": 1100.0,
+      "source": "manual",
+      "document_id": null
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666662",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "entry_date": "2026-10-02",
+      "cash_total": 4100.0,
+      "upi_total": 6800.0,
+      "taxable_sales": 9400.0,
+      "exempt_sales": 1500.0,
+      "source": "manual",
+      "document_id": null
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666663",
+      "firm_id": "22222222-2222-4222-8222-222222222222",
+      "client_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "entry_date": "2026-10-01",
+      "cash_total": 12000.0,
+      "upi_total": 18500.0,
+      "taxable_sales": 26000.0,
+      "exempt_sales": 4500.0,
+      "source": "csv",
+      "document_id": "44444444-4444-4444-8444-444444444443"
+    }
+  ]
+}
