@@ -4,7 +4,7 @@ import { siteConfig } from "@/config/site";
 import { Container } from "@/components/ui/Container";
 
 export function Footer() {
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2026;
 
   return (
     <footer className="border-t border-line bg-background py-12">
