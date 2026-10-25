@@ -20,7 +20,8 @@ create table public.documents (
   period_fp text check (period_fp is null or (length(period_fp) = 6 and period_fp ~ '^(0[1-9]|1[0-2])[0-9]{4}$')),
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint fk_documents_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 -- Active document unique by client_id and sha256
@@ -37,6 +38,7 @@ create index idx_documents_client_id on public.documents (client_id);
 create index idx_documents_period_fp on public.documents (period_fp);
 create index idx_documents_status on public.documents (status);
 create index idx_documents_kind on public.documents (kind);
+create index idx_documents_uploaded_by on public.documents (uploaded_by);
 
 -- ============================================================================
 -- 3. Trigger
@@ -105,9 +107,21 @@ create policy "documents_storage_select"
   using (
     bucket_id = 'documents'
     and (
-      public.is_firm_member((storage.foldername(name))[1]::uuid)
-      or public.is_client_owner((storage.foldername(name))[2]::uuid)
-      or public.is_platform_admin()
+      public.is_platform_admin()
+      or (
+        name ~ '^[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}/'
+        and (
+          public.is_firm_member((storage.foldername(name))[1]::uuid)
+          or (
+            public.is_client_owner((storage.foldername(name))[2]::uuid)
+            and exists (
+              select 1 from public.clients c
+              where c.id = (storage.foldername(name))[2]::uuid
+                and c.firm_id = (storage.foldername(name))[1]::uuid
+            )
+          )
+        )
+      )
     )
   );
 
@@ -117,9 +131,21 @@ create policy "documents_storage_insert"
   with check (
     bucket_id = 'documents'
     and (
-      public.is_firm_member((storage.foldername(name))[1]::uuid)
-      or public.is_client_owner((storage.foldername(name))[2]::uuid)
-      or public.is_platform_admin()
+      public.is_platform_admin()
+      or (
+        name ~ '^[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}/'
+        and (
+          public.is_firm_member((storage.foldername(name))[1]::uuid)
+          or (
+            public.is_client_owner((storage.foldername(name))[2]::uuid)
+            and exists (
+              select 1 from public.clients c
+              where c.id = (storage.foldername(name))[2]::uuid
+                and c.firm_id = (storage.foldername(name))[1]::uuid
+            )
+          )
+        )
+      )
     )
   );
 
@@ -129,15 +155,21 @@ create policy "documents_storage_update"
   using (
     bucket_id = 'documents'
     and (
-      public.is_firm_member((storage.foldername(name))[1]::uuid)
-      or public.is_platform_admin()
+      public.is_platform_admin()
+      or (
+        name ~ '^[0-9a-fA-F-]{36}/'
+        and public.is_firm_member((storage.foldername(name))[1]::uuid)
+      )
     )
   )
   with check (
     bucket_id = 'documents'
     and (
-      public.is_firm_member((storage.foldername(name))[1]::uuid)
-      or public.is_platform_admin()
+      public.is_platform_admin()
+      or (
+        name ~ '^[0-9a-fA-F-]{36}/'
+        and public.is_firm_member((storage.foldername(name))[1]::uuid)
+      )
     )
   );
 
@@ -147,7 +179,10 @@ create policy "documents_storage_delete"
   using (
     bucket_id = 'documents'
     and (
-      public.is_firm_admin((storage.foldername(name))[1]::uuid)
-      or public.is_platform_admin()
+      public.is_platform_admin()
+      or (
+        name ~ '^[0-9a-fA-F-]{36}/'
+        and public.is_firm_admin((storage.foldername(name))[1]::uuid)
+      )
     )
   );

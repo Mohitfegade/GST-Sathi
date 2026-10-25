@@ -70,6 +70,8 @@ export const gstr2bRecordSchema = z.object({
   itc_available: z.boolean().default(true),
   itc_reason: z.string().nullable().optional(),
   ims_action: imsActionSchema.default('none'),
+  ims_action_at: z.string().nullable().optional(),
+  ims_action_by: z.string().uuid().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   deleted_at: z.string().nullable().optional(),

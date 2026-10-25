@@ -18,7 +18,8 @@ create table public.sales_entries (
   document_id uuid references public.documents(id) on delete set null,
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint fk_sales_entries_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 comment on table public.sales_entries is 'Daily or consolidated sales register entries (cash/UPI/taxable/exempt).';
@@ -90,6 +91,7 @@ create table public.sales_invoices (
   invoice_no text not null,
   invoice_date date not null,
   buyer_gstin text check (buyer_gstin is null or (length(buyer_gstin) = 15 and buyer_gstin = upper(buyer_gstin))),
+  buyer_name text,
   place_of_supply text not null check (length(place_of_supply) = 2),
   taxable_value numeric(14,2) not null default 0,
   cgst numeric(14,2) not null default 0,
@@ -101,7 +103,8 @@ create table public.sales_invoices (
   status public.inv_status not null default 'draft',
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint fk_sales_invoices_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 comment on table public.sales_invoices is 'Outward sales invoices, bills of supply, debit/credit notes for GSTR-1.';
@@ -112,6 +115,7 @@ create index idx_sales_invoices_firm_id on public.sales_invoices (firm_id);
 create index idx_sales_invoices_client_id on public.sales_invoices (client_id);
 create index idx_sales_invoices_invoice_no on public.sales_invoices (invoice_no);
 create index idx_sales_invoices_invoice_date on public.sales_invoices (invoice_date);
+create index idx_sales_invoices_buyer_gstin on public.sales_invoices (buyer_gstin);
 
 -- Trigger for sales_invoices
 create trigger set_sales_invoices_updated_at
@@ -175,7 +179,8 @@ create table public.return_periods (
   ack_ref text,
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint fk_return_periods_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 comment on table public.return_periods is 'GST return filing tracking per client, return type, and filing period (MMYYYY).';
@@ -261,6 +266,8 @@ comment on table public.return_drafts is 'Versioned JSON return draft payloads (
 
 -- Indexes for return_drafts
 create index idx_return_drafts_return_period_id on public.return_drafts (return_period_id);
+create index idx_return_drafts_created_by on public.return_drafts (created_by);
+create index idx_return_drafts_approved_by on public.return_drafts (approved_by);
 
 -- Trigger for return_drafts
 create trigger set_return_drafts_updated_at

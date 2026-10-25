@@ -100,12 +100,13 @@ begin
     return false;
   end if;
 
-  -- Check client_access direct assignment
+  -- Check client_access direct assignment (verifying client belongs to managing firm)
   if exists (
     select 1
-    from public.client_access
-    where client_id = client
-      and user_id = auth.uid()
+    from public.client_access ca
+    join public.clients c on c.id = ca.client_id and c.firm_id = ca.firm_id
+    where ca.client_id = client
+      and ca.user_id = auth.uid()
   ) then
     return true;
   end if;
@@ -134,10 +135,11 @@ begin
   end if;
   return exists (
     select 1
-    from public.client_access
-    where client_id = client
-      and user_id = auth.uid()
-      and role = 'owner'
+    from public.client_access ca
+    join public.clients c on c.id = ca.client_id and c.firm_id = ca.firm_id
+    where ca.client_id = client
+      and ca.user_id = auth.uid()
+      and ca.role = 'owner'
   );
 end;
 $$;

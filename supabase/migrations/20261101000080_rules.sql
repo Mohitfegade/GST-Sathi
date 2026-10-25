@@ -83,16 +83,7 @@ create policy "rule_snapshots_insert"
   for insert
   with check (public.is_platform_admin());
 
-create policy "rule_snapshots_update"
-  on public.rule_snapshots
-  for update
-  using (public.is_platform_admin())
-  with check (public.is_platform_admin());
-
-create policy "rule_snapshots_delete"
-  on public.rule_snapshots
-  for delete
-  using (public.is_platform_admin());
+-- rule_snapshots is strictly append-only (no update, no delete policies)
 
 -- RLS: gst_rate_rules
 alter table public.gst_rate_rules enable row level security;

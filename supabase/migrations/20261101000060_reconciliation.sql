@@ -17,7 +17,8 @@ create table if not exists public.reconciliation_runs (
   rule_snapshot_id uuid,
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint fk_recon_runs_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 comment on table public.reconciliation_runs is 'Reconciliation run sessions comparing purchase books with GSTR-2B.';
@@ -74,6 +75,7 @@ create index if not exists idx_reconciliation_results_gstr2b_record_id on public
 create index if not exists idx_reconciliation_results_status on public.reconciliation_results (status);
 create index if not exists idx_reconciliation_results_run_status on public.reconciliation_results (run_id, status);
 create index if not exists idx_reconciliation_results_user_decision on public.reconciliation_results (user_decision);
+create index if not exists idx_reconciliation_results_decided_by on public.reconciliation_results (decided_by);
 
 -- Trigger: set_updated_at on public.reconciliation_results
 create trigger trg_reconciliation_results_set_updated_at

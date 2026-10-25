@@ -39,7 +39,8 @@ create table public.clients (
   sells_taxable boolean not null default true,
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint uq_clients_id_firm_id unique (id, firm_id)
 );
 
 -- Active GSTIN unique per firm
@@ -57,7 +58,8 @@ create table public.client_access (
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
   deleted_at timestamptz,
-  unique (client_id, user_id)
+  unique (client_id, user_id),
+  constraint fk_client_access_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 -- 5. platform_admins
@@ -233,8 +235,15 @@ create policy "client_access_insert"
   for insert
   to authenticated
   with check (
-    public.is_firm_admin(firm_id)
-    or public.is_platform_admin()
+    public.is_platform_admin()
+    or (
+      public.is_firm_admin(firm_id)
+      and exists (
+        select 1 from public.clients c
+        where c.id = client_access.client_id
+          and c.firm_id = client_access.firm_id
+      )
+    )
   );
 
 create policy "client_access_update"
@@ -242,12 +251,26 @@ create policy "client_access_update"
   for update
   to authenticated
   using (
-    public.is_firm_admin(firm_id)
-    or public.is_platform_admin()
+    public.is_platform_admin()
+    or (
+      public.is_firm_admin(firm_id)
+      and exists (
+        select 1 from public.clients c
+        where c.id = client_access.client_id
+          and c.firm_id = client_access.firm_id
+      )
+    )
   )
   with check (
-    public.is_firm_admin(firm_id)
-    or public.is_platform_admin()
+    public.is_platform_admin()
+    or (
+      public.is_firm_admin(firm_id)
+      and exists (
+        select 1 from public.clients c
+        where c.id = client_access.client_id
+          and c.firm_id = client_access.firm_id
+      )
+    )
   );
 
 create policy "client_access_delete"
@@ -255,8 +278,15 @@ create policy "client_access_delete"
   for delete
   to authenticated
   using (
-    public.is_firm_admin(firm_id)
-    or public.is_platform_admin()
+    public.is_platform_admin()
+    or (
+      public.is_firm_admin(firm_id)
+      and exists (
+        select 1 from public.clients c
+        where c.id = client_access.client_id
+          and c.firm_id = client_access.firm_id
+      )
+    )
   );
 
 -- RLS Policies: platform_admins (select only; no insert/update/delete via client)

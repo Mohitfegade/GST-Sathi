@@ -16,7 +16,8 @@ create table public.suppliers (
   notes text,
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint fk_suppliers_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 -- Partial unique index for active suppliers per client
@@ -98,7 +99,8 @@ create table public.invoices (
   period_fp text not null check (length(period_fp) = 6 and period_fp ~ '^(0[1-9]|1[0-2])[0-9]{4}$'),
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint fk_invoices_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 create index invoices_firm_id_idx on public.invoices (firm_id);
@@ -271,6 +273,7 @@ create table public.invoice_payments (
   paid_on date not null,
   amount numeric(14,2) not null check (amount > 0),
   mode public.pay_mode not null default 'bank',
+  reference_no text,
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
   deleted_at timestamptz

@@ -67,6 +67,7 @@ export const salesInvoiceSchema = z.object({
   invoice_no: z.string().min(1, 'Invoice number is required'),
   invoice_date: z.string(),
   buyer_gstin: gstinSchema.nullable().optional(),
+  buyer_name: z.string().nullable().optional(),
   place_of_supply: stateCodeSchema,
   taxable_value: z.number().nonnegative().default(0),
   cgst: z.number().nonnegative().default(0),

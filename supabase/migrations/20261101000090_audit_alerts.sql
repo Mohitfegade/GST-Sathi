@@ -73,13 +73,17 @@ create policy "audit_events_select"
     or public.is_platform_admin()
   );
 
--- Insert: allowed for system/service_role or authenticated actors or firm admins
+-- Insert: allowed for system/service_role or authenticated actors within the firm or admins
 create policy "audit_events_insert"
   on public.audit_events
   for insert
   with check (
     auth.role() = 'service_role'
-    or (auth.uid() is not null and (actor_id is null or actor_id = auth.uid()))
+    or (
+      auth.uid() is not null
+      and (actor_id is null or actor_id = auth.uid())
+      and (public.is_firm_member(firm_id) or public.is_platform_admin())
+    )
     or public.is_firm_admin(firm_id)
     or public.is_platform_admin()
   );
@@ -102,7 +106,8 @@ create table if not exists public.alerts (
   status public.alert_status not null default 'open',
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint fk_alerts_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 comment on table public.alerts is 'System alerts and compliance notifications for firms and clients.';

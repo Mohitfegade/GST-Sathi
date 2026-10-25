@@ -38,6 +38,7 @@ comment on column public.extraction_fields.final_value is 'Final verified/correc
 create index idx_extraction_fields_document_id on public.extraction_fields (document_id);
 create index idx_extraction_fields_invoice_id on public.extraction_fields (invoice_id);
 create index idx_extraction_fields_field_path on public.extraction_fields (field_path);
+create index idx_extraction_fields_modified_by on public.extraction_fields (modified_by);
 
 -- ============================================================================
 -- 3. Trigger

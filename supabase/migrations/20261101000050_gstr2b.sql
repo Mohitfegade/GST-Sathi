@@ -16,7 +16,8 @@ create table if not exists public.gstr2b_imports (
   record_count integer not null default 0 check (record_count >= 0),
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint fk_gstr2b_imports_client_firm foreign key (client_id, firm_id) references public.clients(id, firm_id) on delete cascade
 );
 
 comment on table public.gstr2b_imports is 'Imported GSTR-2B statement batches per client and return period.';
@@ -29,6 +30,8 @@ create index if not exists idx_gstr2b_imports_firm_id on public.gstr2b_imports (
 create index if not exists idx_gstr2b_imports_client_id on public.gstr2b_imports (client_id);
 create index if not exists idx_gstr2b_imports_return_period_fp on public.gstr2b_imports (return_period_fp);
 create index if not exists idx_gstr2b_imports_client_period on public.gstr2b_imports (client_id, return_period_fp);
+create index if not exists idx_gstr2b_imports_document_id on public.gstr2b_imports (document_id);
+create index if not exists idx_gstr2b_imports_imported_by on public.gstr2b_imports (imported_by);
 
 -- Trigger: set_updated_at on public.gstr2b_imports
 create trigger trg_gstr2b_imports_set_updated_at
@@ -57,6 +60,8 @@ create table if not exists public.gstr2b_records (
   itc_available boolean not null default true,
   itc_reason text,
   ims_action public.ims_action not null default 'none',
+  ims_action_at timestamptz,
+  ims_action_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
   deleted_at timestamptz

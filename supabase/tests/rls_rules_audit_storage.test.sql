@@ -101,9 +101,21 @@ begin
       using (
         bucket_id = 'documents'
         and (
-          public.is_firm_member((storage.foldername(name))[1]::uuid)
-          or public.is_client_owner((storage.foldername(name))[2]::uuid)
-          or public.is_platform_admin()
+          public.is_platform_admin()
+          or (
+            name ~ '^[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}/'
+            and (
+              public.is_firm_member((storage.foldername(name))[1]::uuid)
+              or (
+                public.is_client_owner((storage.foldername(name))[2]::uuid)
+                and exists (
+                  select 1 from public.clients c
+                  where c.id = (storage.foldername(name))[2]::uuid
+                    and c.firm_id = (storage.foldername(name))[1]::uuid
+                )
+              )
+            )
+          )
         )
       );
 
@@ -113,9 +125,21 @@ begin
       with check (
         bucket_id = 'documents'
         and (
-          public.is_firm_member((storage.foldername(name))[1]::uuid)
-          or public.is_client_owner((storage.foldername(name))[2]::uuid)
-          or public.is_platform_admin()
+          public.is_platform_admin()
+          or (
+            name ~ '^[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}/'
+            and (
+              public.is_firm_member((storage.foldername(name))[1]::uuid)
+              or (
+                public.is_client_owner((storage.foldername(name))[2]::uuid)
+                and exists (
+                  select 1 from public.clients c
+                  where c.id = (storage.foldername(name))[2]::uuid
+                    and c.firm_id = (storage.foldername(name))[1]::uuid
+                )
+              )
+            )
+          )
         )
       );
 
@@ -125,15 +149,21 @@ begin
       using (
         bucket_id = 'documents'
         and (
-          public.is_firm_member((storage.foldername(name))[1]::uuid)
-          or public.is_platform_admin()
+          public.is_platform_admin()
+          or (
+            name ~ '^[0-9a-fA-F-]{36}/'
+            and public.is_firm_member((storage.foldername(name))[1]::uuid)
+          )
         )
       )
       with check (
         bucket_id = 'documents'
         and (
-          public.is_firm_member((storage.foldername(name))[1]::uuid)
-          or public.is_platform_admin()
+          public.is_platform_admin()
+          or (
+            name ~ '^[0-9a-fA-F-]{36}/'
+            and public.is_firm_member((storage.foldername(name))[1]::uuid)
+          )
         )
       );
 
@@ -143,8 +173,11 @@ begin
       using (
         bucket_id = 'documents'
         and (
-          public.is_firm_admin((storage.foldername(name))[1]::uuid)
-          or public.is_platform_admin()
+          public.is_platform_admin()
+          or (
+            name ~ '^[0-9a-fA-F-]{36}/'
+            and public.is_firm_admin((storage.foldername(name))[1]::uuid)
+          )
         )
       );
   end if;
