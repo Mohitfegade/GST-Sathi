@@ -7,8 +7,10 @@ export interface ContainerProps {
 
 export function Container({ children, className = "" }: ContainerProps) {
   return (
-    <div className={`mx-auto max-w-[1120px] px-5 md:px-8 ${className}`}>
+    <div className={`max-w-[1120px] px-5 md:px-8 mx-auto ${className}`.trim()}>
       {children}
     </div>
   );
 }
+
+export default Container;

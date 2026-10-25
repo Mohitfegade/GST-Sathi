@@ -14,9 +14,9 @@ export function SectionHeading({
   className = "",
 }: SectionHeadingProps) {
   return (
-    <div className={`max-w-[640px] ${className}`}>
+    <div className={`max-w-[640px] ${className}`.trim()}>
       {eyebrow && (
-        <p className="text-xs font-semibold tracking-wider text-muted uppercase mb-3">
+        <p className="text-xs uppercase tracking-wider text-muted font-semibold mb-3">
           {eyebrow}
         </p>
       )}
@@ -31,3 +31,5 @@ export function SectionHeading({
     </div>
   );
 }
+
+export default SectionHeading;

@@ -1,0 +1,30 @@
+---
+description: Project core development rules and design principles
+globs: *
+alwaysApply: true
+---
+
+# Project Rules: GST Saathi
+
+These rules apply across the entire codebase at all times.
+
+## 1. Feature Development
+- Build one feature at a time.
+- Make small, logical commits with clear messages.
+- Do not mix refactoring, documentation, and multiple features into a single change.
+
+## 2. Agent Collaboration & Lane Ownership
+- Use maximum parallel subagents with strictly owned files.
+- No two lanes touch the same file.
+- Edit only the files explicitly assigned to your lane.
+
+## 3. UI & Design System
+- **Plain-English UI**: Tailored for non-technical users. Use short sentences, large legible text, uncluttered layouts, and exactly one clear primary action per section.
+- **Light Theme Only**: No dark mode, no pastels, no gradients, no emojis.
+- **Design Tokens Only**: Use theme tokens exclusively (`background`, `surface`, `ink`, `muted`, `line`, `accent`, `accent-hover`, `on-accent`).
+- **Zero Hardcoded Hex Codes**: Never hardcode hex colors in components or styles.
+- **Mobile-First Responsive Design**: Design and verify for breakpoints at 375px (mobile), 768px (tablet), and 1280px (desktop).
+
+## 4. Computation & Data Integrity
+- **Tax Math**: Tax calculations must strictly be deterministic code (never LLM-generated output).
+- **Data Logic**: No realistic-looking hardcoded data in application logic or business rules. Use explicit fixtures or dynamic inputs.

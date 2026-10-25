@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GST Saathi
+
+GST compliance platform for accountants and the small shops they serve in India.
+Simplifies bill matching with GSTR-2B and return preparation.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18.x or later
+- npm
+
+### Installation & Run Steps
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Phone Preview on Same Wi-Fi
+
+To preview the app on your mobile phone connected to the same Wi-Fi network:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev -- --hostname 0.0.0.0
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Access it on your phone using `http://<your-local-ip>:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How to Rename the App
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app name is centralized in configuration:
+- Edit the `name` property in [`src/config/site.ts`](src/config/site.ts):
+  ```ts
+  export const siteConfig: SiteConfig = {
+    name: "Your App Name",
+    // ...
+  };
+  ```
+All navigation headers, titles, and site metadata read directly from this file.
 
-## Learn More
+## Folder Map
 
-To learn more about Next.js, take a look at the following resources:
+```text
+├── docs/                 # Project documentation and specifications
+│   ├── DECISIONS.md      # Key architecture and design decisions
+│   ├── PRODUCT_BRIEF.md  # Product vision and scope
+│   ├── PROMPT_PLAN.md    # Implementation roadmap
+│   └── RULES_TO_VERIFY.md# Quality and compliance checklists
+├── public/               # Static assets and icons
+├── src/
+│   ├── app/              # Next.js App Router (pages, layout, globals.css)
+│   ├── components/       # UI components
+│   │   ├── layout/       # Layout components (Navbar, Footer, etc.)
+│   │   ├── sections/     # Page sections and features
+│   │   └── ui/           # Reusable UI primitives (Button, Container, SectionHeading)
+│   └── config/           # Centralized configuration
+│       └── site.ts       # App name, tagline, navigation links
+├── .editorconfig         # Consistent editor formatting settings
+├── .env.example          # Sample environment variables template
+├── .gitignore            # Git exclusion rules
+├── .prettierrc           # Prettier code style configuration
+├── package.json          # Project scripts and dependencies
+└── tsconfig.json         # TypeScript configuration
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev` - Run development server
+- `npm run build` - Build the application for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run typecheck` - Run TypeScript typecheck

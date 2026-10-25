@@ -7,7 +7,8 @@ export interface ButtonProps {
   children: React.ReactNode;
   className?: string;
   disabled?: boolean;
-  onClick?: () => void;
+  type?: "button" | "submit" | "reset";
+  onClick?: React.MouseEventHandler<HTMLButtonElement | HTMLAnchorElement>;
 }
 
 export function Button({
@@ -15,22 +16,33 @@ export function Button({
   href,
   children,
   className = "",
-  disabled,
+  disabled = false,
+  type = "button",
   onClick,
 }: ButtonProps) {
   const baseStyles =
     "inline-flex items-center justify-center min-h-[48px] px-6 py-3 rounded-[8px] text-[16px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
 
   const variantStyles =
-    variant === "primary"
-      ? "bg-accent text-on-accent hover:bg-accent-hover"
-      : "bg-background text-ink border border-line hover:bg-surface";
+    variant === "secondary"
+      ? "bg-background text-ink border border-line hover:bg-surface"
+      : "bg-accent text-on-accent hover:bg-accent-hover";
 
-  const combinedClassName = `${baseStyles} ${variantStyles} ${className}`.trim();
+  const disabledLinkStyles = disabled ? "opacity-50 pointer-events-none" : "";
+
+  const combinedClassName = `${baseStyles} ${variantStyles} ${disabledLinkStyles} ${className}`
+    .trim()
+    .replace(/\s+/g, " ");
 
   if (href) {
     return (
-      <Link href={href} className={combinedClassName}>
+      <Link
+        href={href}
+        className={combinedClassName}
+        aria-disabled={disabled || undefined}
+        tabIndex={disabled ? -1 : undefined}
+        onClick={onClick as React.MouseEventHandler<HTMLAnchorElement>}
+      >
         {children}
       </Link>
     );
@@ -38,12 +50,14 @@ export function Button({
 
   return (
     <button
-      type="button"
+      type={type}
       disabled={disabled}
-      onClick={onClick}
       className={combinedClassName}
+      onClick={onClick as React.MouseEventHandler<HTMLButtonElement>}
     >
       {children}
     </button>
   );
 }
+
+export default Button;
