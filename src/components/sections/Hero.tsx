@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/Button";
 
 export function Hero() {
   return (
-    <section className="bg-background pt-20 pb-16 md:pt-28 md:pb-24 text-left">
+    <section aria-labelledby="hero-heading" className="bg-background pt-20 pb-16 md:pt-28 md:pb-24 text-left">
       <Container>
         <div className="max-w-[800px]">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-ink">
+          <h1 id="hero-heading" className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-ink">
             GST paperwork, sorted before the deadline.
           </h1>
           <p className="text-lg sm:text-xl text-muted max-w-[680px] leading-relaxed mt-6 mb-8">

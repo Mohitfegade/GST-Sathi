@@ -9,6 +9,7 @@ export interface ButtonProps {
   disabled?: boolean;
   type?: "button" | "submit" | "reset";
   onClick?: React.MouseEventHandler<HTMLButtonElement | HTMLAnchorElement>;
+  "aria-label"?: string;
 }
 
 export function Button({
@@ -19,6 +20,7 @@ export function Button({
   disabled = false,
   type = "button",
   onClick,
+  "aria-label": ariaLabel,
 }: ButtonProps) {
   const baseStyles =
     "inline-flex items-center justify-center min-h-[48px] px-6 py-3 rounded-[8px] text-[16px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
@@ -39,6 +41,7 @@ export function Button({
       <Link
         href={href}
         className={combinedClassName}
+        aria-label={ariaLabel}
         aria-disabled={disabled || undefined}
         tabIndex={disabled ? -1 : undefined}
         onClick={onClick as React.MouseEventHandler<HTMLAnchorElement>}
@@ -52,6 +55,7 @@ export function Button({
     <button
       type={type}
       disabled={disabled}
+      aria-label={ariaLabel}
       className={combinedClassName}
       onClick={onClick as React.MouseEventHandler<HTMLButtonElement>}
     >

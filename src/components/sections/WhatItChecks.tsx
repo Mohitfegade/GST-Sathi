@@ -30,9 +30,10 @@ const CHECK_ITEMS: CheckItem[] = [
 
 export function WhatItChecks() {
   return (
-    <section className="py-16 md:py-24 bg-surface">
+    <section aria-labelledby="what-it-checks-heading" className="py-16 md:py-24 bg-surface">
       <Container>
         <SectionHeading
+          id="what-it-checks-heading"
           title="What gets checked for you."
           className="mb-12 md:mb-16"
         />
@@ -40,7 +41,7 @@ export function WhatItChecks() {
           {CHECK_ITEMS.map((item) => (
             <div
               key={item.title}
-              className="border border-line p-6 md:p-8 rounded-[8px] bg-background"
+              className="border border-line p-6 lg:p-8 rounded-[8px] bg-background"
             >
               <h3 className="text-xl font-semibold tracking-tight text-ink mb-3">
                 {item.title}

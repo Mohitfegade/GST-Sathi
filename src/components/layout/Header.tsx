@@ -16,7 +16,7 @@ export function Header({ className = "" }: HeaderProps) {
           <div className="flex items-center gap-8 lg:gap-10">
             <Link
               href="/"
-              className="text-[17px] font-semibold tracking-tight text-ink hover:opacity-90 transition-opacity"
+              className="inline-flex items-center min-h-[48px] py-2 text-[17px] font-semibold tracking-tight text-ink hover:opacity-90 transition-opacity"
             >
               {siteConfig.name}
             </Link>

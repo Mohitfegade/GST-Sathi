@@ -5,10 +5,17 @@ import { siteConfig } from "@/config/site";
 
 export function FinalCta() {
   return (
-    <section id="contact" className="border-t border-line bg-background py-20 md:py-28">
+    <section
+      id="contact"
+      aria-labelledby="final-cta-heading"
+      className="border-t border-line bg-background py-20 md:py-28"
+    >
       <Container>
         <div className="flex flex-col items-center text-center">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-ink sm:text-4xl md:text-5xl">
+          <h2
+            id="final-cta-heading"
+            className="mb-4 text-3xl font-bold tracking-tight text-ink sm:text-4xl md:text-5xl"
+          >
             Want early access?
           </h2>
           <p className="mb-8 max-w-[560px] text-lg text-muted">
@@ -17,6 +24,8 @@ export function FinalCta() {
           <Button
             href={`mailto:${siteConfig.contactEmail}?subject=Early%20Access%20Request`}
             variant="primary"
+            className="w-full sm:w-auto"
+            aria-label="Request early access via email"
           >
             Get early access
           </Button>

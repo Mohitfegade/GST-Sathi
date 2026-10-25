@@ -33,20 +33,25 @@ const STEPS: Step[] = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-16 md:py-24 bg-background">
+    <section
+      id="how-it-works"
+      aria-labelledby="how-it-works-heading"
+      className="py-16 md:py-24 bg-background"
+    >
       <Container>
         <SectionHeading
+          id="how-it-works-heading"
           eyebrow="Workflow"
           title="How it works"
           description="Four simple steps to get your returns prepared accurately and on time."
           className="mb-12 md:mb-16"
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {STEPS.map((step) => (
             <div
               key={step.number}
-              className="border border-line rounded-[8px] p-6 md:p-8 bg-surface flex flex-col"
+              className="border border-line rounded-[8px] p-6 lg:p-8 bg-surface flex flex-col"
             >
               <span className="text-3xl md:text-4xl font-bold tracking-tight text-accent mb-4 md:mb-6">
                 {step.number}

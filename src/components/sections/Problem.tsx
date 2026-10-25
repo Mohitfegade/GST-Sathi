@@ -21,9 +21,10 @@ const FACTS = [
 
 export function Problem() {
   return (
-    <section className="bg-surface py-16 md:py-24 border-y border-line">
+    <section aria-labelledby="problem-heading" className="bg-surface py-16 md:py-24 border-y border-line">
       <Container>
         <SectionHeading
+          id="problem-heading"
           title="Missed dates cost real money."
           className="mb-12 md:mb-16"
         />
@@ -32,7 +33,7 @@ export function Problem() {
           {FACTS.map((fact) => (
             <div
               key={fact.figure}
-              className="border border-line rounded-[8px] p-6 md:p-8 bg-background flex flex-col justify-start"
+              className="border border-line rounded-[8px] p-6 lg:p-8 bg-background flex flex-col justify-start"
             >
               <div className="text-4xl md:text-5xl font-bold tracking-tight text-ink mb-3">
                 {fact.figure}

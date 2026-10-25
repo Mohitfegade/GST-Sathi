@@ -5,6 +5,7 @@ export interface SectionHeadingProps {
   title: string;
   description?: string;
   className?: string;
+  id?: string;
 }
 
 export function SectionHeading({
@@ -12,6 +13,7 @@ export function SectionHeading({
   title,
   description,
   className = "",
+  id,
 }: SectionHeadingProps) {
   return (
     <div className={`max-w-[640px] ${className}`.trim()}>
@@ -20,7 +22,7 @@ export function SectionHeading({
           {eyebrow}
         </p>
       )}
-      <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-ink mb-4">
+      <h2 id={id} className="text-3xl md:text-4xl font-bold tracking-tight text-ink mb-4">
         {title}
       </h2>
       {description && (
