@@ -22,12 +22,12 @@ export function Footer() {
 
           <div className="flex flex-col gap-4 text-sm md:items-end">
             {siteConfig.navLinks && siteConfig.navLinks.length > 0 && (
-              <nav aria-label="Footer Navigation" className="flex flex-wrap gap-6">
+              <nav aria-label="Footer" className="flex flex-wrap gap-6">
                 {siteConfig.navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="text-muted transition-colors hover:text-ink"
+                    className="text-muted transition-colors hover:text-ink rounded-[6px] py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     {link.label}
                   </Link>
@@ -35,10 +35,22 @@ export function Footer() {
               </nav>
             )}
 
-            <div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-2 md:justify-end">
+              <Link
+                href={siteConfig.authLinks?.login ?? "/login"}
+                className="inline-flex min-h-[48px] items-center px-2 py-2 text-muted transition-colors hover:text-ink rounded-[6px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                Log in
+              </Link>
+              <Link
+                href={siteConfig.authLinks?.signup ?? "/signup"}
+                className="inline-flex min-h-[48px] items-center px-2 py-2 text-muted transition-colors hover:text-ink rounded-[6px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                Create account
+              </Link>
               <a
                 href={`mailto:${siteConfig.contactEmail}`}
-                className="text-muted underline underline-offset-4 transition-colors hover:text-ink"
+                className="inline-flex min-h-[48px] items-center px-2 py-2 text-muted underline underline-offset-4 transition-colors hover:text-ink rounded-[6px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent break-all sm:break-normal"
               >
                 {siteConfig.contactEmail}
               </a>

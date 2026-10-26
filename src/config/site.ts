@@ -3,12 +3,24 @@ export interface NavLink {
   href: string;
 }
 
+export interface AuthLinks {
+  login: string;
+  signup: string;
+}
+
+export interface AuthLabels {
+  login: string;
+  signup: string;
+}
+
 export interface SiteConfig {
   name: string;
   tagline: string;
   contactEmail: string;
   url: string;
   navLinks: NavLink[];
+  authLinks: AuthLinks;
+  authLabels: AuthLabels;
 }
 
 export const siteConfig: SiteConfig = {
@@ -20,6 +32,15 @@ export const siteConfig: SiteConfig = {
     { label: "How it works", href: "#how-it-works" },
     { label: "For accountants", href: "#for-accountants" },
   ],
+  authLinks: {
+    login: "/login",
+    signup: "/signup",
+  },
+  authLabels: {
+    login: "Log in",
+    signup: "Create account",
+  },
 };
 
-export const { name, tagline, contactEmail, url, navLinks } = siteConfig;
+export const { name, tagline, contactEmail, url, navLinks, authLinks, authLabels } = siteConfig;
+
