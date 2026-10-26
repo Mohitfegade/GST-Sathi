@@ -1,0 +1,65 @@
+{
+  "_comment": "FAKE USERS FOR LOCAL DEVELOPMENT AND TESTING ONLY - NOT REAL USERS OR TAX DATA",
+  "notice": "All emails, names, passwords, and user identifiers in this file are completely synthetic mock profiles created strictly for local development, authentication testing, and RLS validation.",
+  "users": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "email": "ca_admin@fake-test.local",
+      "displayName": "Rajesh Sharma (CA Firm Admin) [FAKE]",
+      "role": "admin",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "firm_name": "Acme Tax Consultants [FAKE]",
+      "client_id": null,
+      "intended_home_route": "/app",
+      "description": "CA Firm Administrator with full firm management, staff administration, and client invite privileges [FAKE]",
+      "test_credentials": {
+        "password": "FakePassword123!",
+        "otp": "123456"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "email": "ca_staff@fake-test.local",
+      "displayName": "Pooja Verma (CA Firm Staff) [FAKE]",
+      "role": "staff",
+      "firm_id": "11111111-1111-4111-8111-111111111111",
+      "firm_name": "Acme Tax Consultants [FAKE]",
+      "client_id": null,
+      "intended_home_route": "/app",
+      "description": "CA Firm Staff member with operational access to managed client returns, invoices, and reconciliation [FAKE]",
+      "test_credentials": {
+        "password": "FakePassword123!",
+        "otp": "123456"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000011",
+      "email": "shop_owner@fake-test.local",
+      "displayName": "Ganesh Patel (SME Shop Owner) [FAKE]",
+      "role": "owner",
+      "firm_id": null,
+      "client_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "client_name": "Shree Ganesh Stationery & Xerox [FAKE]",
+      "intended_home_route": "/portal",
+      "description": "SME Client Owner with access to shop bill uploads, sales registers, and tax liability summaries [FAKE]",
+      "test_credentials": {
+        "password": "FakePassword123!",
+        "otp": "123456"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "email": "no_access@fake-test.local",
+      "displayName": "Unaffiliated User [FAKE]",
+      "role": "unaffiliated",
+      "firm_id": null,
+      "client_id": null,
+      "intended_home_route": "/no-access",
+      "description": "Authenticated user without any CA firm membership or client access. Should redirect to /no-access [FAKE]",
+      "test_credentials": {
+        "password": "FakePassword123!",
+        "otp": "123456"
+      }
+    }
+  ]
+}
