@@ -1,0 +1,5 @@
+-- Migration 110: Client Support
+-- Reserved filename for client management enhancements:
+-- 1. Partial unique index for active clients per firm
+-- 2. Index optimizations for client search
+-- 3. RLS policy strengthening (only firm admin may archive/restore clients, only firm admin may revoke pending unaccepted invites)
