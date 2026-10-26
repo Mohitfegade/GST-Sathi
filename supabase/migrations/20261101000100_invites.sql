@@ -1,0 +1,2 @@
+-- Migration 100: Client Invites & Auth Helper Functions
+-- Reserved migration for client_invites table, RLS, and security-definer helper functions.
