@@ -23,69 +23,15 @@
 
 begin;
 
--- Initialize pgTAP plan: 31 assertions
-select plan(31);
+-- Initialize pgTAP plan: 38 assertions
+select plan(38);
 
 -- ============================================================================
--- 0. Environment Setup & Compatibilities
+-- 0. Environment Setup & Grants
 -- ============================================================================
-
--- Ensure standard Supabase roles exist
-do $$
-begin
-  if not exists (select 1 from pg_roles where rolname = 'anon') then
-    create role anon nologin;
-  end if;
-  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
-    create role authenticated nologin;
-  end if;
-  if not exists (select 1 from pg_roles where rolname = 'service_role') then
-    create role service_role nologin;
-  end if;
-end $$;
-
--- Ensure auth schema, users table, and auth helper functions exist
-create schema if not exists auth;
-
-create table if not exists auth.users (
-  id uuid primary key,
-  aud text default 'authenticated',
-  role text default 'authenticated',
-  email text,
-  email_confirmed_at timestamptz default now(),
-  raw_app_meta_data jsonb default '{}'::jsonb,
-  raw_user_meta_data jsonb default '{}'::jsonb,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create or replace function auth.uid()
-returns uuid
-language sql
-stable
-as $$
-  select coalesce(
-    nullif(current_setting('request.jwt.claim.sub', true), ''),
-    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
-  )::uuid;
-$$;
-
-create or replace function auth.role()
-returns text
-language sql
-stable
-as $$
-  select coalesce(
-    nullif(current_setting('request.jwt.claim.role', true), ''),
-    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'),
-    current_setting('role', true)
-  );
-$$;
 
 -- Grant schema and table access so RLS policies are the sole access filter
 grant usage on schema public to anon, authenticated;
-grant usage on schema auth to anon, authenticated;
-grant execute on all functions in schema auth to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to anon, authenticated;
 
 -- ============================================================================
@@ -194,9 +140,12 @@ on conflict (id) do nothing;
 -- ============================================================================
 -- 2. ASSERTIONS: Firm A Staff (User 1)
 -- ============================================================================
+
+-- Impersonate Firm A Staff
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000001"}', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
 
 -- 1. Firm A staff can see Firm A sales_entries
 select ok(
@@ -267,8 +216,12 @@ select is(
 -- ============================================================================
 -- 3. ASSERTIONS: Firm B Staff (User 3) cannot see Firm A records
 -- ============================================================================
-select set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000003", "role": "authenticated"}', true);
+
+-- Impersonate Firm B Staff
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000003"}', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
 
 -- 11. Firm B staff cannot see Firm A sales_entries
 select is_empty(
@@ -290,7 +243,7 @@ select is_empty(
 
 -- 14. Firm B staff cannot see Firm A return_drafts
 select is_empty(
-  'select 1 from public.return_drafts rd join public.return_periods rp on rp.id = rd.return_period_id where rp.firm_id = ''11111111-1111-1111-1111-111111111111''',
+  'select 1 from public.return_drafts where id = ''10000000-0000-0000-0000-000000000006''',
   'Firm B staff cannot see Firm A return_drafts'
 );
 
@@ -302,7 +255,7 @@ select is_empty(
 
 -- 16. Firm B staff cannot see Firm A reconciliation_results
 select is_empty(
-  'select 1 from public.reconciliation_results rr join public.reconciliation_runs r on r.id = rr.run_id where r.firm_id = ''11111111-1111-1111-1111-111111111111''',
+  'select 1 from public.reconciliation_results where id = ''10000000-0000-0000-0000-000000000002''',
   'Firm B staff cannot see Firm A reconciliation_results'
 );
 
@@ -324,12 +277,37 @@ select ok(
   'Firm B staff can see Firm B alerts'
 );
 
+-- 19b. Firm B staff CANNOT insert sales_entries into Firm A
+select throws_ok(
+  $$insert into public.sales_entries (id, firm_id, client_id, entry_date, cash_total, upi_total, taxable_sales, exempt_sales, source)
+    values ('10000000-0000-0000-0000-000000000099', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '2026-04-15', 100, 0, 100, 0, 'manual')$$,
+  '42501'::character(5),
+  null::text,
+  'Firm B staff CANNOT insert sales_entries into Firm A (throws 42501)'
+);
+
+-- 19c. Firm B staff UPDATE on Firm A alerts affects 0 rows
+select results_eq(
+  $$with upd as (
+      update public.alerts
+      set status = 'dismissed'
+      where id = '10000000-0000-0000-0000-000000000007'
+      returning 1
+    ) select count(*)::integer from upd$$,
+  array[0],
+  'Firm B staff UPDATE on Firm A alerts affects 0 rows'
+);
+
 
 -- ============================================================================
 -- 4. ASSERTIONS: Client A Owner (User 2)
 -- ============================================================================
-select set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000002", "role": "authenticated"}', true);
+
+-- Impersonate Client A Owner
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000002"}', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
 
 -- 20. Client A owner can read sales_entries for Client A
 select ok(
@@ -365,26 +343,28 @@ select ok(
   'Client A owner can read reconciliation_results for Client A'
 );
 
--- 25. Client A owner CANNOT update reconciliation_results (read-only for client owner)
-update public.reconciliation_results
-set user_decision = 'disputed'
-where id = '10000000-0000-0000-0000-000000000002';
-
-select is(
-  (select user_decision::text from public.reconciliation_results where id = '10000000-0000-0000-0000-000000000002'),
-  'accepted', -- set to 'accepted' by Firm A staff above; update by Client A owner is rejected/no-op
-  'Client A owner CANNOT update reconciliation_results (read-only for client owner)'
+-- 25. Client A owner CANNOT update reconciliation_results (affects 0 rows)
+select results_eq(
+  'with upd as (
+     update public.reconciliation_results
+     set user_decision = ''disputed''
+     where id = ''10000000-0000-0000-0000-000000000002''
+     returning 1
+   ) select count(*)::integer from upd',
+  array[0],
+  'Client A owner UPDATE on reconciliation_results affects exactly 0 rows'
 );
 
--- 26. Client A owner CANNOT update reconciliation_runs
-update public.reconciliation_runs
-set status = 'failed'
-where id = '10000000-0000-0000-0000-000000000001';
-
-select is(
-  (select status from public.reconciliation_runs where id = '10000000-0000-0000-0000-000000000001'),
-  'completed',
-  'Client A owner CANNOT update reconciliation_runs'
+-- 26. Client A owner CANNOT update reconciliation_runs (affects 0 rows)
+select results_eq(
+  'with upd as (
+     update public.reconciliation_runs
+     set status = ''failed''
+     where id = ''10000000-0000-0000-0000-000000000001''
+     returning 1
+   ) select count(*)::integer from upd',
+  array[0],
+  'Client A owner UPDATE on reconciliation_runs affects exactly 0 rows'
 );
 
 -- 27. Client A owner CAN see alerts belonging to Client A1
@@ -418,8 +398,52 @@ select is(
   'Client A owner sees only their own client alerts in total'
 );
 
+-- 32. Client A owner can read own client sales_invoices
+select ok(
+  exists (select 1 from public.sales_invoices where id = '10000000-0000-0000-0000-000000000004'),
+  'Client A owner can read own client sales_invoices'
+);
+
+-- 33. Client A owner CANNOT read Firm B sales_invoices
+select is_empty(
+  'select 1 from public.sales_invoices where id = ''20000000-0000-0000-0000-000000000004''',
+  'Client A owner CANNOT read Firm B sales_invoices'
+);
+
+-- 34. Client A owner CANNOT insert sales_invoices
+select throws_ok(
+  $$insert into public.sales_invoices (id, firm_id, client_id, invoice_no, invoice_date, place_of_supply, taxable_value, cgst, sgst, total, doc_type, status)
+    values ('10000000-0000-0000-0000-000000000098', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'INV-OWNER-01', '2026-04-10', '27', 1000, 90, 90, 1180, 'tax_invoice', 'draft')$$,
+  '42501'::character(5),
+  null::text,
+  'Client A owner CANNOT insert sales_invoices (throws 42501)'
+);
+
+-- 35. Client A owner CANNOT insert return_drafts
+select throws_ok(
+  $$insert into public.return_drafts (id, return_period_id, version, payload, created_by)
+    values ('10000000-0000-0000-0000-000000000097', '10000000-0000-0000-0000-000000000005', 2, '{}'::jsonb, '00000000-0000-0000-0000-000000000002')$$,
+  '42501'::character(5),
+  null::text,
+  'Client A owner CANNOT insert return_drafts (throws 42501)'
+);
+
+-- 36. Client A owner CANNOT insert alerts
+select throws_ok(
+  $$insert into public.alerts (id, firm_id, client_id, kind, severity, title, body, status)
+    values ('10000000-0000-0000-0000-000000000096', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'deadline', 'urgent', 'Fake Alert', 'Body', 'open')$$,
+  '42501'::character(5),
+  null::text,
+  'Client A owner CANNOT insert alerts (throws 42501)'
+);
+
 -- ============================================================================
 -- 5. FINISH & ROLLBACK
 -- ============================================================================
+
+-- Reset role to superuser before finish
+reset role;
+
 select * from finish();
+
 rollback;

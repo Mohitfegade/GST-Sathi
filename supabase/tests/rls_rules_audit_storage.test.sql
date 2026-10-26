@@ -4,186 +4,14 @@
 
 begin;
 
--- Initialize pgTAP plan: exactly 58 assertions
-select plan(58);
+-- Initialize pgTAP plan: exactly 73 assertions
+select plan(73);
 
 -- ============================================================================
--- 0. Environment Setup & Compatibilities
+-- 0. Environment Setup & Grants
 -- ============================================================================
 
--- Ensure standard Supabase roles exist
-do $$
-begin
-  if not exists (select 1 from pg_roles where rolname = 'anon') then
-    create role anon nologin;
-  end if;
-  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
-    create role authenticated nologin;
-  end if;
-end $$;
-
--- Ensure auth schema, users table, and auth helper functions exist
-create schema if not exists auth;
-
-create table if not exists auth.users (
-  id uuid primary key,
-  aud text default 'authenticated',
-  role text default 'authenticated',
-  email text,
-  email_confirmed_at timestamptz default now(),
-  raw_app_meta_data jsonb default '{}'::jsonb,
-  raw_user_meta_data jsonb default '{}'::jsonb,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create or replace function auth.uid()
-returns uuid
-language sql
-stable
-as $$
-  select coalesce(
-    nullif(current_setting('request.jwt.claim.sub', true), ''),
-    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
-  )::uuid;
-$$;
-
-create or replace function auth.role()
-returns text
-language sql
-stable
-as $$
-  select coalesce(
-    nullif(current_setting('request.jwt.claim.role', true), ''),
-    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'),
-    current_setting('role', true)
-  );
-$$;
-
--- Ensure storage schema, objects, and folder helper function exist
-do $$
-begin
-  if not exists (select 1 from pg_tables where schemaname = 'storage' and tablename = 'objects') then
-    create schema if not exists storage;
-    create table storage.buckets (
-      id text primary key,
-      name text not null,
-      public boolean default false
-    );
-    create table storage.objects (
-      id uuid primary key default gen_random_uuid(),
-      bucket_id text references storage.buckets(id),
-      name text not null,
-      owner uuid,
-      created_at timestamptz default clock_timestamp(),
-      updated_at timestamptz default clock_timestamp(),
-      last_accessed_at timestamptz default clock_timestamp(),
-      metadata jsonb default '{}'::jsonb
-    );
-    create or replace function storage.foldername(name text)
-    returns text[]
-    language plpgsql
-    immutable
-    as $fn$
-    declare
-      _parts text[];
-    begin
-      select string_to_array(name, '/') into _parts;
-      return _parts[1 : (array_length(_parts, 1) - 1)];
-    end
-    $fn$;
-
-    alter table storage.objects enable row level security;
-
-    create policy "documents_storage_select"
-      on storage.objects
-      for select
-      using (
-        bucket_id = 'documents'
-        and (
-          public.is_platform_admin()
-          or (
-            name ~ '^[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}/'
-            and (
-              public.is_firm_member((storage.foldername(name))[1]::uuid)
-              or (
-                public.is_client_owner((storage.foldername(name))[2]::uuid)
-                and exists (
-                  select 1 from public.clients c
-                  where c.id = (storage.foldername(name))[2]::uuid
-                    and c.firm_id = (storage.foldername(name))[1]::uuid
-                )
-              )
-            )
-          )
-        )
-      );
-
-    create policy "documents_storage_insert"
-      on storage.objects
-      for insert
-      with check (
-        bucket_id = 'documents'
-        and (
-          public.is_platform_admin()
-          or (
-            name ~ '^[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}/'
-            and (
-              public.is_firm_member((storage.foldername(name))[1]::uuid)
-              or (
-                public.is_client_owner((storage.foldername(name))[2]::uuid)
-                and exists (
-                  select 1 from public.clients c
-                  where c.id = (storage.foldername(name))[2]::uuid
-                    and c.firm_id = (storage.foldername(name))[1]::uuid
-                )
-              )
-            )
-          )
-        )
-      );
-
-    create policy "documents_storage_update"
-      on storage.objects
-      for update
-      using (
-        bucket_id = 'documents'
-        and (
-          public.is_platform_admin()
-          or (
-            name ~ '^[0-9a-fA-F-]{36}/'
-            and public.is_firm_member((storage.foldername(name))[1]::uuid)
-          )
-        )
-      )
-      with check (
-        bucket_id = 'documents'
-        and (
-          public.is_platform_admin()
-          or (
-            name ~ '^[0-9a-fA-F-]{36}/'
-            and public.is_firm_member((storage.foldername(name))[1]::uuid)
-          )
-        )
-      );
-
-    create policy "documents_storage_delete"
-      on storage.objects
-      for delete
-      using (
-        bucket_id = 'documents'
-        and (
-          public.is_platform_admin()
-          or (
-            name ~ '^[0-9a-fA-F-]{36}/'
-            and public.is_firm_admin((storage.foldername(name))[1]::uuid)
-          )
-        )
-      );
-  end if;
-end $$;
-
--- Grant schema and table access to anon and authenticated
+-- Grant schema and table access so RLS policies are the sole access filter
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to anon, authenticated;
 grant usage on schema storage to anon, authenticated;
@@ -202,7 +30,7 @@ grant select on storage.buckets to anon, authenticated;
 -- Client 1 Owner:  c0000000-0000-0000-0000-000000000001 (Firm A, Client 1)
 -- Client 2 Owner:  c0000000-0000-0000-0000-000000000002 (Firm A, Client 2)
 -- Client 3 Owner:  c0000000-0000-0000-0000-000000000003 (Firm B, Client 3)
--- Platform Admin:  p0000000-0000-0000-0000-000000000001
+-- Platform Admin:  f0000000-0000-0000-0000-000000000001
 -- Outsider:        e0000000-0000-0000-0000-000000000001
 
 insert into auth.users (id, aud, role, email)
@@ -214,7 +42,7 @@ values
   ('c0000000-0000-0000-0000-000000000001'::uuid, 'authenticated', 'authenticated', 'client_1_owner@test.local'),
   ('c0000000-0000-0000-0000-000000000002'::uuid, 'authenticated', 'authenticated', 'client_2_owner@test.local'),
   ('c0000000-0000-0000-0000-000000000003'::uuid, 'authenticated', 'authenticated', 'client_3_owner@test.local'),
-  ('p0000000-0000-0000-0000-000000000001'::uuid, 'authenticated', 'authenticated', 'platform_admin@test.local'),
+  ('f0000000-0000-0000-0000-000000000001'::uuid, 'authenticated', 'authenticated', 'platform_admin@test.local'),
   ('e0000000-0000-0000-0000-000000000001'::uuid, 'authenticated', 'authenticated', 'outsider@test.local')
 on conflict (id) do nothing;
 
@@ -253,25 +81,30 @@ on conflict (client_id, user_id) do nothing;
 -- Platform Admins
 insert into public.platform_admins (user_id)
 values
-  ('p0000000-0000-0000-0000-000000000001'::uuid)
+  ('f0000000-0000-0000-0000-000000000001'::uuid)
 on conflict (user_id) do nothing;
 
 -- Seed Rules: gst_rate_rules & rule_params
 insert into public.gst_rate_rules (id, hsn_prefix, description_pattern, rate, effective_from, source_ref, verified_by_ca, notes)
 values
-  ('r1111111-1111-1111-1111-111111111111'::uuid, '48', 'Paper and paperboard articles', 12.00, '2024-01-01', 'Notification 01/2017-CT(R)', true, 'Initial rule')
+  ('d1111111-1111-1111-1111-111111111111'::uuid, '48', 'Paper and paperboard articles', 12.00, '2024-01-01', 'Notification 01/2017-CT(R)', true, 'Initial rule')
 on conflict (id) do nothing;
 
 insert into public.rule_params (id, key, value, effective_from, source_ref, verified_by_ca)
 values
-  ('rp111111-1111-1111-1111-111111111111'::uuid, 'composition_turnover_threshold', '{"limit_inr": 15000000}'::jsonb, '2024-01-01', 'Section 10 CGST Act', true)
+  ('d0111111-1111-1111-1111-111111111111'::uuid, 'composition_turnover_threshold', '{"limit_inr": 15000000}'::jsonb, '2024-01-01', 'Section 10 CGST Act', true)
+on conflict (id) do nothing;
+
+insert into public.rule_snapshots (id, label, checksum, created_at)
+values
+  ('e0111111-1111-1111-1111-111111111111'::uuid, 'FY 2026-Q1 Snapshot', 'sha256_mock_checksum_001', '2026-04-01 00:00:00+00')
 on conflict (id) do nothing;
 
 -- Seed Audit Events
 insert into public.audit_events (id, firm_id, client_id, actor_id, action, entity, entity_id, before, after)
 values
-  ('ae111111-1111-1111-1111-111111111111'::uuid, '11111111-1111-1111-1111-111111111111'::uuid, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid, 'INSERT', 'invoices', 'i1111111-1111-1111-1111-111111111111'::uuid, null, '{"invoice_no": "INV-A-001"}'::jsonb),
-  ('ae222222-2222-2222-2222-222222222222'::uuid, '22222222-2222-2222-2222-222222222222'::uuid, 'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid, 'b0000000-0000-0000-0000-000000000001'::uuid, 'INSERT', 'invoices', 'i2222222-2222-2222-2222-222222222222'::uuid, null, '{"invoice_no": "INV-B-001"}'::jsonb)
+  ('ae111111-1111-1111-1111-111111111111'::uuid, '11111111-1111-1111-1111-111111111111'::uuid, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'a0000000-0000-0000-0000-000000000001'::uuid, 'INSERT', 'invoices', '41111111-1111-1111-1111-111111111111'::uuid, null, '{"invoice_no": "INV-A-001"}'::jsonb),
+  ('ae222222-2222-2222-2222-222222222222'::uuid, '22222222-2222-2222-2222-222222222222'::uuid, 'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid, 'b0000000-0000-0000-0000-000000000001'::uuid, 'INSERT', 'invoices', '42222222-2222-2222-2222-222222222222'::uuid, null, '{"invoice_no": "INV-B-001"}'::jsonb)
 on conflict (id) do nothing;
 
 -- Seed Storage Buckets & Objects
@@ -281,9 +114,9 @@ on conflict (id) do nothing;
 
 insert into storage.objects (id, bucket_id, name)
 values
-  ('so111111-1111-1111-1111-111111111111'::uuid, 'documents', '11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/doc1/bill1.pdf'),
-  ('so111111-1111-1111-1111-222222222222'::uuid, 'documents', '11111111-1111-1111-1111-111111111111/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/doc2/bill2.pdf'),
-  ('so222222-2222-2222-2222-333333333333'::uuid, 'documents', '22222222-2222-2222-2222-222222222222/cccccccc-cccc-cccc-cccc-cccccccccccc/doc3/bill3.pdf')
+  ('50111111-1111-1111-1111-111111111111'::uuid, 'documents', '11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/doc1/bill1.pdf'),
+  ('50111111-1111-1111-1111-222222222222'::uuid, 'documents', '11111111-1111-1111-1111-111111111111/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/doc2/bill2.pdf'),
+  ('50222222-2222-2222-2222-333333333333'::uuid, 'documents', '22222222-2222-2222-2222-222222222222/cccccccc-cccc-cccc-cccc-cccccccccccc/doc3/bill3.pdf')
 on conflict (id) do nothing;
 
 -- Verify Seed Setup (Tests 1-7)
@@ -300,13 +133,13 @@ select results_eq(
 );
 
 select results_eq(
-  'select count(*)::integer from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array[1],
   'Setup: Initial gst_rate_rules successfully seeded'
 );
 
 select results_eq(
-  'select count(*)::integer from public.rule_params where id = ''rp111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.rule_params where id = ''d0111111-1111-1111-1111-111111111111''',
   array[1],
   'Setup: Initial rule_params successfully seeded'
 );
@@ -324,7 +157,7 @@ select results_eq(
 );
 
 select results_eq(
-  'select count(*)::integer from storage.objects where bucket_id = ''documents'' and id in (''so111111-1111-1111-1111-111111111111'', ''so111111-1111-1111-1111-222222222222'', ''so222222-2222-2222-2222-333333333333'')',
+  'select count(*)::integer from storage.objects where bucket_id = ''documents'' and id in (''50111111-1111-1111-1111-111111111111'', ''50111111-1111-1111-1111-222222222222'', ''50222222-2222-2222-2222-333333333333'')',
   array[3],
   'Setup: Initial storage objects successfully seeded'
 );
@@ -342,13 +175,13 @@ select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select results_eq(
-  'select count(*)::integer from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array[1],
   'Firm Admin can SELECT from gst_rate_rules'
 );
 
 select results_eq(
-  'select count(*)::integer from public.rule_params where id = ''rp111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.rule_params where id = ''d0111111-1111-1111-1111-111111111111''',
   array[1],
   'Firm Admin can SELECT from rule_params'
 );
@@ -360,13 +193,13 @@ select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select results_eq(
-  'select count(*)::integer from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array[1],
   'Firm Staff can SELECT from gst_rate_rules'
 );
 
 select results_eq(
-  'select count(*)::integer from public.rule_params where id = ''rp111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.rule_params where id = ''d0111111-1111-1111-1111-111111111111''',
   array[1],
   'Firm Staff can SELECT from rule_params'
 );
@@ -378,13 +211,13 @@ select set_config('request.jwt.claim.sub', 'c0000000-0000-0000-0000-000000000001
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select results_eq(
-  'select count(*)::integer from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array[1],
   'Client Owner can SELECT from gst_rate_rules'
 );
 
 select results_eq(
-  'select count(*)::integer from public.rule_params where id = ''rp111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.rule_params where id = ''d0111111-1111-1111-1111-111111111111''',
   array[1],
   'Client Owner can SELECT from rule_params'
 );
@@ -396,31 +229,31 @@ select set_config('request.jwt.claim.sub', 'e0000000-0000-0000-0000-000000000001
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select results_eq(
-  'select count(*)::integer from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array[1],
   'Generic authenticated user can SELECT from gst_rate_rules'
 );
 
 select results_eq(
-  'select count(*)::integer from public.rule_params where id = ''rp111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.rule_params where id = ''d0111111-1111-1111-1111-111111111111''',
   array[1],
   'Generic authenticated user can SELECT from rule_params'
 );
 
 -- Platform Admin
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub": "p0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
-select set_config('request.jwt.claim.sub', 'p0000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claims', '{"sub": "f0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'f0000000-0000-0000-0000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select results_eq(
-  'select count(*)::integer from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array[1],
   'Platform Admin can SELECT from gst_rate_rules'
 );
 
 select results_eq(
-  'select count(*)::integer from public.rule_params where id = ''rp111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.rule_params where id = ''d0111111-1111-1111-1111-111111111111''',
   array[1],
   'Platform Admin can SELECT from rule_params'
 );
@@ -449,20 +282,21 @@ select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select throws_ok(
   'insert into public.gst_rate_rules (hsn_prefix, rate, effective_from, source_ref, notes) values (''9999'', 18.00, ''2026-01-01'', ''Staff test'', ''Staff note'')',
-  '42501',
+  '42501'::character(5),
+  null::text,
   'Firm staff CANNOT INSERT into gst_rate_rules (throws 42501)'
 );
 
-update public.gst_rate_rules set notes = 'Hacked by staff' where id = 'r1111111-1111-1111-1111-111111111111';
+update public.gst_rate_rules set notes = 'Hacked by staff' where id = 'd1111111-1111-1111-1111-111111111111';
 select results_eq(
-  'select notes from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select notes from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array['Initial rule'::text],
   'Firm staff UPDATE on gst_rate_rules is denied (notes unchanged)'
 );
 
-delete from public.gst_rate_rules where id = 'r1111111-1111-1111-1111-111111111111';
+delete from public.gst_rate_rules where id = 'd1111111-1111-1111-1111-111111111111';
 select results_eq(
-  'select count(*)::integer from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array[1],
   'Firm staff DELETE on gst_rate_rules is denied (row still exists)'
 );
@@ -475,48 +309,49 @@ select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select throws_ok(
   'insert into public.gst_rate_rules (hsn_prefix, rate, effective_from, source_ref, notes) values (''9998'', 18.00, ''2026-01-01'', ''Client test'', ''Client note'')',
-  '42501',
+  '42501'::character(5),
+  null::text,
   'Client owner CANNOT INSERT into gst_rate_rules (throws 42501)'
 );
 
-update public.gst_rate_rules set notes = 'Hacked by client' where id = 'r1111111-1111-1111-1111-111111111111';
+update public.gst_rate_rules set notes = 'Hacked by client' where id = 'd1111111-1111-1111-1111-111111111111';
 select results_eq(
-  'select notes from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select notes from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array['Initial rule'::text],
   'Client owner UPDATE on gst_rate_rules is denied (notes unchanged)'
 );
 
-delete from public.gst_rate_rules where id = 'r1111111-1111-1111-1111-111111111111';
+delete from public.gst_rate_rules where id = 'd1111111-1111-1111-1111-111111111111';
 select results_eq(
-  'select count(*)::integer from public.gst_rate_rules where id = ''r1111111-1111-1111-1111-111111111111''',
+  'select count(*)::integer from public.gst_rate_rules where id = ''d1111111-1111-1111-1111-111111111111''',
   array[1],
   'Client owner DELETE on gst_rate_rules is denied (row still exists)'
 );
 
 -- 2.4 Platform Admin CAN INSERT and UPDATE gst_rate_rules
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub": "p0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
-select set_config('request.jwt.claim.sub', 'p0000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claims', '{"sub": "f0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'f0000000-0000-0000-0000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select lives_ok(
-  'insert into public.gst_rate_rules (id, hsn_prefix, rate, effective_from, source_ref, notes) values (''r2222222-2222-2222-2222-222222222222''::uuid, ''4820'', 18.00, ''2026-01-01'', ''Notification 01/2026'', ''Created by platform admin'')',
+  'insert into public.gst_rate_rules (id, hsn_prefix, rate, effective_from, source_ref, notes) values (''d2222222-2222-2222-2222-222222222222''::uuid, ''4820'', 18.00, ''2026-01-01'', ''Notification 01/2026'', ''Created by platform admin'')',
   'Platform admin CAN INSERT into gst_rate_rules'
 );
 
 select results_eq(
-  'select hsn_prefix from public.gst_rate_rules where id = ''r2222222-2222-2222-2222-222222222222''',
+  'select hsn_prefix from public.gst_rate_rules where id = ''d2222222-2222-2222-2222-222222222222''',
   array['4820'::text],
   'Platform admin inserted rule is visible and confirmed'
 );
 
 select lives_ok(
-  'update public.gst_rate_rules set rate = 5.00, notes = ''Updated by platform admin'' where id = ''r2222222-2222-2222-2222-222222222222''',
+  'update public.gst_rate_rules set rate = 5.00, notes = ''Updated by platform admin'' where id = ''d2222222-2222-2222-2222-222222222222''',
   'Platform admin CAN UPDATE gst_rate_rules'
 );
 
 select results_eq(
-  'select rate::numeric from public.gst_rate_rules where id = ''r2222222-2222-2222-2222-222222222222''',
+  'select rate::numeric from public.gst_rate_rules where id = ''d2222222-2222-2222-2222-222222222222''',
   array[5.00::numeric],
   'Platform admin updated rate is confirmed'
 );
@@ -533,7 +368,7 @@ select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select results_eq(
   'select count(*)::integer from public.audit_events where firm_id = ''11111111-1111-1111-1111-111111111111''',
-  array[1],
+  array[3],
   'Firm Admin can SELECT audit_events for their own firm (Firm A)'
 );
 
@@ -544,8 +379,8 @@ select is_empty(
 
 select results_eq(
   'select count(*)::integer from public.audit_events',
-  array[1],
-  'Firm Admin sees only their own firm audit events (count = 1)'
+  array[3],
+  'Firm Admin sees only their own firm audit events (count = 3)'
 );
 
 -- 3.2 Firm Staff (non-admin) CANNOT SELECT audit_events
@@ -634,8 +469,8 @@ select results_eq(
 
 -- Platform Admin attempt to mutate audit_events
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub": "p0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
-select set_config('request.jwt.claim.sub', 'p0000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claims', '{"sub": "f0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'f0000000-0000-0000-0000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 update public.audit_events set action = 'UPDATE' where id = 'ae111111-1111-1111-1111-111111111111';
@@ -655,7 +490,8 @@ select results_eq(
 -- Direct trigger function check
 select throws_ok(
   'select public.prevent_audit_modification()',
-  'audit_events is append-only: updates and deletes are prohibited',
+  '0A000'::character(5),
+  null::text,
   'Direct execution of prevent_audit_modification() throws exception'
 );
 
@@ -670,36 +506,37 @@ select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select results_eq(
-  'select name from storage.objects where id = ''so111111-1111-1111-1111-111111111111''',
+  'select name from storage.objects where id = ''50111111-1111-1111-1111-111111111111''',
   array['11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/doc1/bill1.pdf'::text],
   'Firm A user can access objects in firm A path (Client 1)'
 );
 
 select results_eq(
-  'select name from storage.objects where id = ''so111111-1111-1111-1111-222222222222''',
+  'select name from storage.objects where id = ''50111111-1111-1111-1111-222222222222''',
   array['11111111-1111-1111-1111-111111111111/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/doc2/bill2.pdf'::text],
   'Firm A user can access objects in firm A path (Client 2)'
 );
 
 select is_empty(
-  'select * from storage.objects where id = ''so222222-2222-2222-2222-333333333333''',
+  'select * from storage.objects where id = ''50222222-2222-2222-2222-333333333333''',
   'Firm A user CANNOT access objects in Firm B storage path (empty set)'
 );
 
 select results_eq(
-  'select count(*)::integer from storage.objects where bucket_id = ''documents'' and id in (''so111111-1111-1111-1111-111111111111'', ''so111111-1111-1111-1111-222222222222'', ''so222222-2222-2222-2222-333333333333'')',
+  'select count(*)::integer from storage.objects where bucket_id = ''documents'' and id in (''50111111-1111-1111-1111-111111111111'', ''50111111-1111-1111-1111-222222222222'', ''50222222-2222-2222-2222-333333333333'')',
   array[2],
   'Firm A user sees exactly 2 objects belonging to Firm A'
 );
 
 select lives_ok(
-  'insert into storage.objects (id, bucket_id, name) values (''so111111-9999-1111-1111-111111111111''::uuid, ''documents'', ''11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/doc_new/new.pdf'')',
+  'insert into storage.objects (id, bucket_id, name) values (''50111111-9999-1111-1111-111111111111''::uuid, ''documents'', ''11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/doc_new/new.pdf'')',
   'Firm A user CAN INSERT object into Firm A storage path'
 );
 
 select throws_ok(
-  'insert into storage.objects (id, bucket_id, name) values (''so222222-9999-2222-2222-222222222222''::uuid, ''documents'', ''22222222-2222-2222-2222-222222222222/cccccccc-cccc-cccc-cccc-cccccccccccc/doc_hack/hack.pdf'')',
-  '42501',
+  'insert into storage.objects (id, bucket_id, name) values (''50222222-9999-2222-2222-222222222222''::uuid, ''documents'', ''22222222-2222-2222-2222-222222222222/cccccccc-cccc-cccc-cccc-cccccccccccc/doc_hack/hack.pdf'')',
+  '42501'::character(5),
+  null::text,
   'Firm A user CANNOT INSERT object into Firm B storage path (throws 42501)'
 );
 
@@ -710,41 +547,43 @@ select set_config('request.jwt.claim.sub', 'c0000000-0000-0000-0000-000000000001
 select set_config('request.jwt.claim.role', 'authenticated', true);
 
 select results_eq(
-  'select name from storage.objects where id = ''so111111-1111-1111-1111-111111111111''',
+  'select name from storage.objects where id = ''50111111-1111-1111-1111-111111111111''',
   array['11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/doc1/bill1.pdf'::text],
   'Client 1 Owner can access objects in {firm_A_id}/{client_1_id}/...'
 );
 
 select is_empty(
-  'select * from storage.objects where id = ''so111111-1111-1111-1111-222222222222''',
+  'select * from storage.objects where id = ''50111111-1111-1111-1111-222222222222''',
   'Client 1 Owner CANNOT access objects of other client under same firm'
 );
 
 select is_empty(
-  'select * from storage.objects where id = ''so222222-2222-2222-2222-333333333333''',
+  'select * from storage.objects where id = ''50222222-2222-2222-2222-333333333333''',
   'Client 1 Owner CANNOT access objects of client under different firm'
 );
 
 select results_eq(
-  'select count(*)::integer from storage.objects where bucket_id = ''documents'' and id in (''so111111-1111-1111-1111-111111111111'', ''so111111-1111-1111-1111-222222222222'', ''so222222-2222-2222-2222-333333333333'')',
+  'select count(*)::integer from storage.objects where bucket_id = ''documents'' and id in (''50111111-1111-1111-1111-111111111111'', ''50111111-1111-1111-1111-222222222222'', ''50222222-2222-2222-2222-333333333333'')',
   array[1],
   'Client 1 Owner sees only their own client objects (count = 1)'
 );
 
 select lives_ok(
-  'insert into storage.objects (id, bucket_id, name) values (''so111111-8888-1111-1111-111111111111''::uuid, ''documents'', ''11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/doc_client/upload.pdf'')',
+  'insert into storage.objects (id, bucket_id, name) values (''50111111-8888-1111-1111-111111111111''::uuid, ''documents'', ''11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/doc_client/upload.pdf'')',
   'Client owner CAN INSERT object into own client path'
 );
 
 select throws_ok(
-  'insert into storage.objects (id, bucket_id, name) values (''so111111-8888-1111-1111-222222222222''::uuid, ''documents'', ''11111111-1111-1111-1111-111111111111/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/doc_hack/hack.pdf'')',
-  '42501',
+  'insert into storage.objects (id, bucket_id, name) values (''50111111-8888-1111-1111-222222222222''::uuid, ''documents'', ''11111111-1111-1111-1111-111111111111/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/doc_hack/hack.pdf'')',
+  '42501'::character(5),
+  null::text,
   'Client owner CANNOT INSERT object into another client path under same firm (throws 42501)'
 );
 
 select throws_ok(
-  'insert into storage.objects (id, bucket_id, name) values (''so222222-8888-2222-2222-333333333333''::uuid, ''documents'', ''22222222-2222-2222-2222-222222222222/cccccccc-cccc-cccc-cccc-cccccccccccc/doc_hack/hack.pdf'')',
-  '42501',
+  'insert into storage.objects (id, bucket_id, name) values (''50222222-8888-2222-2222-333333333333''::uuid, ''documents'', ''22222222-2222-2222-2222-222222222222/cccccccc-cccc-cccc-cccc-cccccccccccc/doc_hack/hack.pdf'')',
+  '42501'::character(5),
+  null::text,
   'Client owner CANNOT INSERT object into client path under different firm (throws 42501)'
 );
 
@@ -759,7 +598,180 @@ select is_empty(
   'Anonymous user CANNOT access any documents in storage'
 );
 
--- Finish pgTAP Test Suite
+-- ============================================================================
+-- 4.4 Strengthened Coverage (Rule Snapshots, Rule Params, Audit Spoofing, Storage Lifecycle)
+-- ============================================================================
+
+-- 1. Complete Coverage for rule_snapshots (Statutory Immutability)
+-- Verify authenticated users can SELECT rule_snapshots
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "a0000000-0000-0000-0000-000000000002", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select results_eq(
+  'select count(*)::integer from public.rule_snapshots where id = ''e0111111-1111-1111-1111-111111111111''',
+  array[1],
+  'Firm Staff can SELECT rule_snapshots'
+);
+
+-- Firm Staff CANNOT insert into rule_snapshots
+select throws_ok(
+  'insert into public.rule_snapshots (id, label, checksum) values (''e0222222-2222-2222-2222-222222222222''::uuid, ''Unauthorized'', ''chk'')',
+  '42501'::character(5),
+  null::text,
+  'Firm Staff CANNOT insert into rule_snapshots (throws 42501)'
+);
+
+-- Platform Admin CAN insert into rule_snapshots
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "f0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'f0000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select lives_ok(
+  'insert into public.rule_snapshots (id, label, checksum) values (''e0222222-2222-2222-2222-222222222222''::uuid, ''Platform Admin Snapshot'', ''chk2'')',
+  'Platform Admin CAN insert into rule_snapshots'
+);
+
+-- Immutability: Platform Admin CANNOT update or delete rule_snapshots (no policies exist)
+select results_eq(
+  'with upd as (
+     update public.rule_snapshots set label = ''Tampered'' where id = ''e0111111-1111-1111-1111-111111111111'' returning 1
+   ) select count(*)::integer from upd',
+  array[0],
+  'Platform Admin UPDATE on rule_snapshots affects 0 rows (strictly append-only)'
+);
+
+select results_eq(
+  'with del as (
+     delete from public.rule_snapshots where id = ''e0111111-1111-1111-1111-111111111111'' returning 1
+   ) select count(*)::integer from del',
+  array[0],
+  'Platform Admin DELETE on rule_snapshots affects 0 rows (strictly append-only)'
+);
+
+-- 2. CA Firm Admin CANNOT Mutate Statutory Rules (gst_rate_rules & rule_params)
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "a0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select throws_ok(
+  'insert into public.gst_rate_rules (hsn_prefix, rate, effective_from, source_ref) values (''9997'', 18.00, ''2026-01-01'', ''CA Admin Attempt'')',
+  '42501'::character(5),
+  null::text,
+  'Firm Admin CANNOT insert into gst_rate_rules (throws 42501)'
+);
+
+select throws_ok(
+  'insert into public.rule_params (key, value, effective_from, source_ref) values (''hack_param'', ''{}''::jsonb, ''2026-01-01'', ''CA Admin Attempt'')',
+  '42501'::character(5),
+  null::text,
+  'Firm Admin CANNOT insert into rule_params (throws 42501)'
+);
+
+select results_eq(
+  'with upd as (
+     update public.rule_params set value = ''{"hacked": true}''::jsonb where id = ''d0111111-1111-1111-1111-111111111111'' returning 1
+   ) select count(*)::integer from upd',
+  array[0],
+  'Firm Admin UPDATE on rule_params affects 0 rows'
+);
+
+-- 3. Unauthorized and Spoofed Audit Event Insertions
+-- Client Owner cannot insert into audit_events
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "c0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'c0000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select throws_ok(
+  'insert into public.audit_events (firm_id, client_id, actor_id, action, entity, entity_id)
+   values (''11111111-1111-1111-1111-111111111111'', ''aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'', ''c0000000-0000-0000-0000-000000000001'', ''INSERT'', ''clients'', ''aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'')',
+  '42501'::character(5),
+  null::text,
+  'Client Owner CANNOT insert into audit_events (throws 42501)'
+);
+
+-- Firm Staff attempting to forge actor_id (spoofing Firm Admin UUID)
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "a0000000-0000-0000-0000-000000000002", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select throws_ok(
+  'insert into public.audit_events (firm_id, client_id, actor_id, action, entity, entity_id)
+   values (''11111111-1111-1111-1111-111111111111'', ''aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'', ''a0000000-0000-0000-0000-000000000001'', ''INSERT'', ''clients'', ''aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'')',
+  '42501'::character(5),
+  null::text,
+  'Firm Staff CANNOT spoof another user as actor_id in audit_events (throws 42501)'
+);
+
+-- Firm Staff attempting to insert audit event for another firm (Firm B)
+select throws_ok(
+  'insert into public.audit_events (firm_id, client_id, actor_id, action, entity, entity_id)
+   values (''22222222-2222-2222-2222-222222222222'', ''cccccccc-cccc-cccc-cccc-cccccccccccc'', ''a0000000-0000-0000-0000-000000000002'', ''INSERT'', ''clients'', ''cccccccc-cccc-cccc-cccc-cccccccccccc'')',
+  '42501'::character(5),
+  null::text,
+  'Firm Staff CANNOT insert audit events for another firm (throws 42501)'
+);
+
+-- 4. Storage Lifecycle (UPDATE / DELETE) & Path Mismatch Assertions
+-- Firm A Staff CANNOT delete storage objects (only Firm Admin or Platform Admin can delete)
+select throws_ok(
+  'delete from storage.objects where id = ''50111111-1111-1111-1111-111111111111''',
+  '42501'::character(5),
+  null::text,
+  'Firm Staff CANNOT DELETE storage objects (throws 42501)'
+);
+
+-- Client 1 Owner CANNOT delete storage objects
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "c0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'c0000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select throws_ok(
+  'delete from storage.objects where id = ''50111111-1111-1111-1111-111111111111''',
+  '42501'::character(5),
+  null::text,
+  'Client Owner CANNOT DELETE storage objects (throws 42501)'
+);
+
+-- Client 1 Owner cross-firm client pairing mismatch upload attempt:
+-- Uses Firm A as folder 1, but Client 3 (from Firm B) as folder 2
+select throws_ok(
+  'insert into storage.objects (id, bucket_id, name) values (''50111111-7777-1111-1111-111111111111''::uuid, ''documents'', ''11111111-1111-1111-1111-111111111111/cccccccc-cccc-cccc-cccc-cccccccccccc/doc_spoof/spoof.pdf'')',
+  '42501'::character(5),
+  null::text,
+  'Client Owner CANNOT upload with mismatched firm and client hierarchy (throws 42501)'
+);
+
+-- Firm A Admin CAN update storage objects belonging to Firm A
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "a0000000-0000-0000-0000-000000000001", "role": "authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select results_eq(
+  'with upd as (
+     update storage.objects
+     set metadata = ''{"verified": true}''::jsonb
+     where id = ''50111111-1111-1111-1111-111111111111''
+     returning 1
+   ) select count(*)::integer from upd',
+  array[1],
+  'Firm Admin CAN UPDATE storage objects belonging to their firm'
+);
+
+-- ============================================================================
+-- 5. Finish Test Suite & Rollback
+-- ============================================================================
+
+-- Reset role to superuser before finish
+reset role;
+
 select * from finish();
 
 rollback;

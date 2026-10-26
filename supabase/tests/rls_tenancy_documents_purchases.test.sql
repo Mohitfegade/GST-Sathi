@@ -4,7 +4,7 @@
 begin;
 
 -- Initialize pgTAP plan
-select plan(50);
+select plan(60);
 
 -- ============================================================================
 -- 0. Environment Setup & Grants
@@ -443,6 +443,103 @@ select results_eq(
   'select count(*)::integer from public.invoices',
   array[0],
   'Unauthenticated anon returns 0 rows for invoices'
+);
+
+-- ============================================================================
+-- 6b. Additional Negative Assertions (Strengthening Isolation & Boundaries)
+-- ============================================================================
+
+-- 1. Firm B Staff Isolation: Missing Documents and Suppliers Checks
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "b0000000-0000-0000-0000-000000000002"}', true);
+select set_config('request.jwt.claim.sub', 'b0000000-0000-0000-0000-000000000002', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select is_empty(
+  'select * from public.documents where firm_id = ''11111111-1111-1111-1111-111111111111''',
+  'Firm B staff CANNOT select Firm A documents (empty set)'
+);
+
+select is_empty(
+  'select * from public.suppliers where firm_id = ''11111111-1111-1111-1111-111111111111''',
+  'Firm B staff CANNOT select Firm A suppliers (empty set)'
+);
+
+-- 2. Cross-Firm Negative Writes: Firm A Staff inserting into Firm B
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "a0000000-0000-0000-0000-000000000002"}', true);
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select throws_ok(
+  'insert into public.invoices (id, firm_id, client_id, invoice_no, invoice_no_norm, invoice_date, place_of_supply, taxable_value, cgst, sgst, igst, total, status, source, itc_state, period_fp)
+   values (''41111111-9999-1111-1111-111111111111''::uuid, ''22222222-2222-2222-2222-222222222222''::uuid, ''bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb''::uuid, ''HACK-01'', ''HACK01'', ''2026-10-01'', ''27'', 1000, 90, 90, 0, 1180, ''draft'', ''extracted'', ''eligible'', ''102026'')',
+  '42501'::character(5),
+  null::text,
+  'Firm A staff CANNOT insert invoices into Firm B (throws 42501)'
+);
+
+select throws_ok(
+  'insert into public.documents (id, firm_id, client_id, kind, storage_path, original_name, mime_type, size_bytes, sha256, status, period_fp)
+   values (''d1111111-9999-1111-1111-111111111111''::uuid, ''22222222-2222-2222-2222-222222222222''::uuid, ''bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb''::uuid, ''purchase_bill'', ''firms/2/doc.pdf'', ''doc.pdf'', ''application/pdf'', 100, ''3333333333333333333333333333333333333333333333333333333333333333'', ''uploaded'', ''102026'')',
+  '42501'::character(5),
+  null::text,
+  'Firm A staff CANNOT insert documents into Firm B (throws 42501)'
+);
+
+-- 3. SME Client Owner Privilege Escalation Boundaries
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "c0000000-0000-0000-0000-000000000001"}', true);
+select set_config('request.jwt.claim.sub', 'c0000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+-- Client Owner cannot view CA firm metadata
+select is_empty(
+  'select * from public.firms',
+  'Client Owner A CANNOT select from public.firms (returns 0 rows)'
+);
+
+-- Client Owner cannot view platform admins
+select is_empty(
+  'select * from public.platform_admins',
+  'Client Owner A CANNOT select from public.platform_admins (returns 0 rows)'
+);
+
+-- Client Owner cannot modify their client entity
+select results_eq(
+  'with upd as (
+     update public.clients
+     set legal_name = ''Hacked Retail Legal Name'', gstin = ''27AAAAA9999A1Z9''
+     where id = ''aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa''
+     returning 1
+   ) select count(*)::integer from upd',
+  array[0],
+  'Client Owner A UPDATE on public.clients affects 0 rows (permission denied by RLS)'
+);
+
+-- Client Owner cannot insert purchase invoices directly
+select throws_ok(
+  'insert into public.invoices (id, firm_id, client_id, invoice_no, invoice_no_norm, invoice_date, place_of_supply, taxable_value, cgst, sgst, igst, total, status, source, itc_state, period_fp)
+   values (''41111111-8888-1111-1111-111111111111''::uuid, ''11111111-1111-1111-1111-111111111111''::uuid, ''aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa''::uuid, ''INV-BYPASS'', ''INVBYPASS'', ''2026-10-01'', ''27'', 500, 45, 45, 0, 590, ''draft'', ''extracted'', ''eligible'', ''102026'')',
+  '42501'::character(5),
+  null::text,
+  'Client Owner A CANNOT insert directly into public.invoices (throws 42501)'
+);
+
+-- Client Owner cannot insert suppliers directly
+select throws_ok(
+  'insert into public.suppliers (id, firm_id, client_id, gstin, name)
+   values (''31111111-8888-1111-1111-111111111111''::uuid, ''11111111-1111-1111-1111-111111111111''::uuid, ''aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa''::uuid, ''27HACK1111A1Z1'', ''Supplier Bypass'')',
+  '42501'::character(5),
+  null::text,
+  'Client Owner A CANNOT insert directly into public.suppliers (throws 42501)'
+);
+
+-- Total suppliers visible across all firms is exactly 1 (Client 1 only)
+select results_eq(
+  'select count(*)::integer from public.suppliers',
+  array[1],
+  'Client Owner A total visible suppliers across all firms is exactly 1'
 );
 
 -- ============================================================================
