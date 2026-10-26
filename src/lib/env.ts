@@ -53,7 +53,11 @@ function resolveEnv(): Env {
     .map((issue) => `${issue.path.join('.') || 'env'}: ${issue.message}`)
     .join('; ');
 
-  if (isServer && process.env.NODE_ENV === 'production') {
+  const isBuildPhase =
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.npm_lifecycle_event === 'build';
+
+  if (isServer && process.env.NODE_ENV === 'production' && !isBuildPhase) {
     throw new Error(
       `[env] Critical server configuration error: Invalid environment variables: ${issues}`
     );
