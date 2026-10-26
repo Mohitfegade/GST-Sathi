@@ -218,3 +218,40 @@ export type PlatformAdminInsert = z.infer<typeof platformAdminInsertSchema>;
 
 export const platformAdminUpdateSchema = platformAdminInsertSchema.partial();
 export type PlatformAdminUpdate = z.infer<typeof platformAdminUpdateSchema>;
+
+// ============================================================================
+// 6. Client Invites
+// ============================================================================
+
+export const clientInviteSchema = z.object({
+  id: z.string().uuid(),
+  firm_id: z.string().uuid(),
+  client_id: z.string().uuid(),
+  token_hash: z.string().min(1, 'Token hash is required'),
+  expires_at: z.string(),
+  accepted_by: z.string().uuid().nullable().optional(),
+  accepted_at: z.string().nullable().optional(),
+  created_by: z.string().uuid().nullable().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+  deleted_at: z.string().nullable().optional(),
+});
+export type ClientInvite = z.infer<typeof clientInviteSchema>;
+
+export const clientInviteInsertSchema = z.object({
+  id: z.string().uuid().optional(),
+  firm_id: z.string().uuid(),
+  client_id: z.string().uuid(),
+  token_hash: z.string().min(1, 'Token hash is required'),
+  expires_at: z.string().optional(),
+  created_by: z.string().uuid().nullable().optional(),
+});
+export type ClientInviteInsert = z.infer<typeof clientInviteInsertSchema>;
+
+export const clientInviteUpdateSchema = z.object({
+  accepted_by: z.string().uuid().nullable().optional(),
+  accepted_at: z.string().nullable().optional(),
+  deleted_at: z.string().nullable().optional(),
+});
+export type ClientInviteUpdate = z.infer<typeof clientInviteUpdateSchema>;
+
