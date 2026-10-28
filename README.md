@@ -60,6 +60,7 @@ All navigation headers, titles, and site metadata read directly from this file.
 │   ├── check-schema-sync.mjs # Verifies DB migrations match domain models
 │   ├── check-tokens.mjs      # Validates design tokens and CSS variables
 │   ├── dev-invite.mjs        # Generates test invitation links for SME clients
+│   ├── seed-clients.mjs      # Seeds 12 fake SME client businesses
 │   └── seed-fixtures.mjs     # Seeds local mock database records
 ├── src/
 │   ├── app/              # Next.js App Router (pages, layout, globals.css)
@@ -118,6 +119,18 @@ node scripts/seed-fixtures.mjs --sql
 ```
 > **Note:** All fixture data in `supabase/fixtures/fake-tenants.json` and `supabase/fixtures/fake-dev-users.json` is synthetic and strictly labeled `[FAKE]` for local testing only.
 
+### 6. Seeding Fake SME Client Businesses
+To populate the local database with 12 realistic but strictly fake SME retail and wholesale clients (covering regular, QRMP, and composition schemes across 6 states with diverse turnover bands):
+```bash
+npm run db:seed:clients
+```
+Options:
+```bash
+# Target a specific firm UUID:
+node scripts/seed-clients.mjs --firm=<firm_uuid>
+```
+> **Note:** All client records in `supabase/fixtures/clients.fake.json` are synthetic test fixtures with names clearly prefixed with `FAKE - ` and GSTINs carrying valid Luhn mod-36 checksums.
+
 ## Auth & Local Development
 
 ### 1. Accountant Registration
@@ -172,6 +185,7 @@ Predefined test personas are documented in [`supabase/fixtures/fake-dev-users.js
 - `npm run dev:invite` - Generate client onboarding invitation link
 - `npm run db:start` - Start local Supabase instance
 - `npm run db:reset` - Reset database and run migrations
+- `npm run db:seed:clients` - Populate 12 fake SME client businesses for local development
 - `npm run db:types` - Generate TypeScript types from local schema
 - `npm run db:test` - Run Supabase db tests
 - `npm run test` - Run tests with Vitest

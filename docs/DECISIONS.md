@@ -22,6 +22,7 @@ This document records the foundational product and architectural decisions for *
 | **ADR-0004** | [One Firm Membership per Accountant in MVP](#adr-0004-one-firm-membership-per-accountant-in-mvp) | **Accepted** | October 2026 | Multi-Tenant Simplicity & Route Context Isolation |
 | **ADR-0005** | [32-Byte Hash-Only Stored Client Invite Tokens](#adr-0005-32-byte-hash-only-stored-client-invite-tokens) | **Accepted** | October 2026 | Cryptographic Entropy & Zero Token Leakage |
 | **ADR-0006** | [Next.js 16 Proxy Convention for Session Refresh and Route Protection](#adr-0006-nextjs-16-proxy-convention-for-session-refresh-and-route-protection) | **Accepted** | October 2026 | Next.js 16 Deprecation & Edge Cookie Synchronisation |
+| **ADR-0007** | [Client Management, Multi-Tenant Architecture & Owner Portal Invitations](#adr-0007-client-management-multi-tenant-architecture--owner-portal-invitations) | **Accepted** | October 2026 | Data Isolation, Soft-Delete & Statutory Integrity |
 
 ---
 
@@ -604,3 +605,105 @@ flowchart TD
 - Handled in `src/proxy.ts`.
 - Pure redirect logic in `src/lib/auth/redirect.ts`.
 - Validated by 40 automated test cases in `src/lib/auth/__tests__/redirect.test.ts`.
+
+---
+
+## ADR-0007: Client Management, Multi-Tenant Architecture & Owner Portal Invitations
+
+### Status
+**Accepted**
+
+### Context
+In Indian accounting practice, Chartered Accountants, Tax Practitioners (TRPs), and accounting firms manage dozens to hundreds of micro-retail and SME client businesses (kirana stores, stationery shops, hardware dealers, wholesalers).
+
+When onboarding, servicing, and offboarding SME clients, accounting platforms encounter fundamental operational and statutory challenges:
+1. **Statutory Document Retention Mandate**: Under Section 36 of the Central Goods and Services Tax (CGST) Act, 2017, every registered taxpayer and their authorized representative must maintain books of account and documents for a minimum period of **72 months (6 years)** from the due date of furnishing the annual return for the relevant financial year. Hard deletion of client records from a database directly violates Section 36, destroying historical invoice trails required during department audits (Form ASMT-10 / DRC-01A).
+2. **Dynamic Client Lifecycles & Re-registration**: SME clients frequently pause operations, dissolve partnerships, transition between proprietary and corporate entities, or leave and return to a CA firm. If a client record is archived or deactivated, the CA firm must be able to re-register that same GSTIN in the future without database uniqueness conflicts on historical records.
+3. **Staff vs Admin Operational Risk**: In typical CA offices, junior articled assistants and staff accountants handle day-to-day data entry and invoice uploads. While staff should create and edit business records, granting them unrestricted deletion or archive authority introduces severe operational risk: an inadvertent click can hide a client during monthly filing crunch (11th or 20th of the month), disrupting statutory filing deadlines.
+4. **SME Owner Portal Access**: Small business owners need a secure channel to upload purchase bills without the burden of complex enterprise passwords. However, invitations must be single-use, time-bound, and immune to token harvesting if database replicas are leaked.
+5. **Zero-Invention Compliance Status**: If an accounting dashboard displays synthetic, placeholder, or estimated compliance statuses, accountants can easily misjudge return readiness, leading to missed filing deadlines or false client representations.
+
+### Decision
+We implement a **Multi-Tenant Client Architecture with Soft-Delete, Partial Unique Indexes, Role-Restricted Lifecycle Management, and Data-Driven Status Derivation**:
+
+1. **Soft-Delete Pattern with `deleted_at timestamptz`**:
+   - The platform strictly prohibits physical `DELETE` operations on active client rows.
+   - Deleting a client sets `deleted_at = now()`. The client and all child records (invoices, return periods, reconciliations, documents) remain intact in PostgreSQL, guaranteeing 100% compliance with the 72-month retention rule under Section 36.
+   - Default client portfolio queries filter active clients via `where deleted_at is null`.
+2. **Partial Unique Index for Reusable GSTINs (`uq_clients_firm_gstin_active`)**:
+   - To prevent duplicate active records while permitting re-registration of archived businesses, we enforce a PostgreSQL partial unique index:
+     ```sql
+     CREATE UNIQUE INDEX uq_clients_firm_gstin_active
+       ON public.clients (firm_id, gstin)
+       WHERE deleted_at IS NULL;
+     ```
+   - If a client is archived, their GSTIN can be re-added as a new record within the same firm without index collision.
+   - When restoring an archived client (`deleted_at = null`), the index guarantees that restoration is blocked if another active client currently holds that GSTIN.
+3. **Kernel-Enforced Dual-Tier Role Authorization**:
+   - **Firm Staff & Admin**: May view client lists, view client details, create new clients, and edit business details (`legal_name`, `trade_name`, `aato_band`, `sells_exempt`, `sells_taxable`, `language`).
+   - **Firm Admin Only**: Archiving (`deleted_at = now()`) and restoring (`deleted_at = null`) are strictly restricted to users with `admin` role in `firm_members` (or platform administrators).
+   - **PostgreSQL Trigger Security**: Enforced not only at the application layer but directly inside PostgreSQL via a `BEFORE UPDATE` trigger function:
+     ```sql
+     CREATE OR REPLACE FUNCTION public.check_client_archive_permission()
+     RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+     BEGIN
+       IF (old.deleted_at IS DISTINCT FROM new.deleted_at) THEN
+         IF NOT (public.is_firm_admin(new.firm_id) OR public.is_platform_admin()) THEN
+           RAISE EXCEPTION 'Only firm admins can archive or restore clients';
+         END IF;
+       END IF;
+       RETURN new;
+     END;
+     $$;
+     ```
+4. **Secure Single-Use Owner Portal Invitations**:
+   - Invitation generation and revocation are restricted to firm `admin` users.
+   - Generates 32 cryptographically secure random bytes (64-character hex string).
+   - The plaintext token is shown once in the UI and never persisted.
+   - The database stores only the SHA-256 hash in `client_invites.token_hash`.
+   - Stored with a strict 7-day time-to-live (`expires_at = now() + interval '7 days'`).
+   - Token acceptance runs atomically via `public.accept_client_invite()`, locking the row, verifying expiry and non-acceptance, marking `accepted_at = now()`, and establishing client ownership within a single transaction.
+5. **Zero-Invention Status Derivation**:
+   - Compliance statuses displayed across client lists and headers ("No activity yet", "Documents waiting", "Needs attention", "Ready for review", "Filed") are computed deterministically from real database records in `return_periods`, `documents`, `invoices`, and `recon_runs`.
+   - Newly onboarded clients with zero return periods or documents evaluate strictly to `"No activity yet"`. No simulated or estimated statuses are permitted.
+
+```mermaid
+graph TD
+    subgraph Client Lifecycle State Machine
+        Active[Active Client: deleted_at IS NULL]
+        Archived[Archived Client: deleted_at = now()]
+        
+        Active -->|Admin Action: Archive Client| Archived
+        Archived -->|Admin Action: Restore Client| Active
+        
+        Staff[Staff User Attempt] -.->|Attempt Archive/Restore| Rejected[Trigger: check_client_archive_permission REJECTS]
+    end
+
+    subgraph Database Constraint Layer
+        Active --> PartialIndex[uq_clients_firm_gstin_active<br/>Enforces Unique GSTIN per Firm]
+        Archived -.->|Bypasses Partial Index| ReusableGSTIN[GSTIN Available for Re-registration]
+    end
+```
+
+### Consequences
+
+#### Positive
+- **Statutory Audit Compliance**: Full adherence to Section 36 of CGST Act; zero historical tax records or invoice references are destroyed.
+- **Accidental Deletion Immunity**: Junior staff cannot accidentally archive active clients during month-end filing rushes.
+- **Safe Re-Registration & Restoration**: CA firms can archive inactive businesses without permanently blocking the GSTIN, while partial indexes prevent duplicate active records.
+- **Zero Token Leakage Risk**: Even a catastrophic database replica leak reveals only one-way SHA-256 hashes, protecting SME owner portals from token harvesting.
+- **Accountant Trust Through Real Statuses**: Accountants rely completely on the dashboard knowing that "Ready for review" or "Needs attention" reflects actual verified database records.
+
+#### Negative & Risks
+- **Query Filter Discipline**: All queries selecting active clients must include `WHERE deleted_at IS NULL`.
+- **Restoration Conflicts**: If an admin attempts to restore an archived client when another active client already uses the same GSTIN, the operation fails with a constraint violation.
+
+#### Mitigations
+- Dedicated helper functions and repository queries encapsulate the `deleted_at IS NULL` condition, verified by automated test suites.
+- Restoration flows provide clear, plain-English guidance informing the admin of conflicting GSTINs and suggesting remediation steps.
+
+### Technical Implementation Details
+- Database tables and indexes in `supabase/migrations/20261101000010_tenancy.sql` and `supabase/migrations/20261101000110_client_support.sql`.
+- Owner portal invitation procedure in `supabase/migrations/20261101000100_invites.sql`.
+- Types and contracts defined in `src/lib/clients/types.ts` and `src/lib/domain/tenancy.ts`.
+- Offline GSTIN validator and Luhn Mod-36 checksum engine in `src/lib/adapters/gstin-verifier.ts`.

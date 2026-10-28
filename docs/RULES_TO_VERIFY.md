@@ -19,6 +19,10 @@
 | [RULE-05](#rule-05-180-day-itc-reversal-rule-rule-37) | 180-Day ITC Reversal | 2nd Proviso to Section 16(2); Rule 37 CGST | Track unpaid supplier bills from invoice date; reverse in Table 4(B)(2) + interest | PENDING REVIEW |
 | [RULE-06](#rule-06-e-way-bill-consignment-thresholds) | E-Way Bill Thresholds | Section 68; Rule 138; State SGST Notifications | Inter-state ₹50,000; Maharashtra intra-state ₹1,00,000; city-specific exemptions | PENDING REVIEW |
 | [RULE-07](#rule-07-invoice-management-system-ims--gstr-2b-recompute) | IMS & GSTR-2B Cycle | GSTN IMS Advisory (Oct/Nov 2024); Rule 60(7) | Invoices accepted/rejected before 14th reflect in 2B; changes after 14th require manual recompute | PENDING REVIEW |
+| [RULE-08](#rule-08-official-gstn-state-codes--qrmp-staggering) | State Codes & Staggering | Section 25; Rule 8; Notif. 82/2020-CT | 37 official 2-digit codes (01-38, 97, 99); QRMP Category 1 (22nd) vs Category 2 (24th) | PENDING REVIEW |
+| [RULE-09](#rule-09-annual-aggregate-turnover-aato-bands) | AATO Bands & Thresholds | Section 10, 22, 44; Notif. 10/2019 & 78/2020-CT | 4 bands (<40L, 40L-1.5Cr, 1.5Cr-5Cr, >5Cr); governs e-invoicing, 6-digit HSN, QRMP | PENDING REVIEW |
+| [RULE-10](#rule-10-statutory-gst-schemes-regular-vs-qrmp-vs-composition) | GST Taxation Schemes | Section 10, 39; Rule 61A; Circular 143/13/2020 | Regular monthly vs QRMP (IFF + PMT-06) vs Composition (CMP-08 1%, no ITC) | PENDING REVIEW |
+| [RULE-11](#rule-11-state-jurisdiction--intra-vs-inter-state-supplies) | Supply Classification | Section 7 & 8 IGST Act; UTGST Act, 2017 | GSTIN prefix = state jurisdiction; intra-state (CGST+SGST/UTGST) vs inter-state (IGST) | PENDING REVIEW |
 
 ---
 
@@ -252,7 +256,215 @@ stateDiagram-v2
 
 ---
 
-## CA Review & Formal Sign-Off Section
+## RULE-08: Official GSTN State Codes & QRMP Staggering
+
+### Statutory Provisions & Legal Context
+- **Section 25 of CGST Act read with Rule 8 of CGST Rules, 2017**: The first 2 digits of every statutory 15-character GSTIN represent the taxpayer's registered State or Union Territory code as established by the Goods and Services Tax Network (GSTN).
+- **Notification No. 82/2020-Central Tax (dated 10-Nov-2020)**: Implemented staggered quarterly GSTR-3B due dates for taxpayers opting into the QRMP scheme:
+  - **Category 1 States & UTs (Due Date: 22nd of succeeding month)**: States of Chhattisgarh, Madhya Pradesh, Gujarat, Maharashtra, Karnataka, Goa, Kerala, Tamil Nadu, Telangana, Andhra Pradesh, and Union Territories of Daman and Diu, Dadra and Nagar Haveli, Puducherry, Andaman and Nicobar Islands, and Lakshadweep.
+  - **Category 2 States & UTs (Due Date: 24th of succeeding month)**: States of Himachal Pradesh, Punjab, Uttarakhand, Haryana, Rajasthan, Uttar Pradesh, Bihar, Sikkim, Arunachal Pradesh, Nagaland, Manipur, Mizoram, Tripura, Meghalaya, Assam, West Bengal, Jharkhand, Odisha, and Union Territories of Jammu and Kashmir, Ladakh, Chandigarh, and Delhi.
+- **Dadra and Nagar Haveli and Daman and Diu Merger (effective 26-Jan-2020)**: Assigned unified State Code `26`. Legacy Code `25` (Daman and Diu) is preserved strictly for historical invoices and legacy record reconciliation.
+- **State Code 28 (Andhra Pradesh Old)**: Retained for pre-bifurcation transactions prior to the creation of Telangana (Code `36`) and re-assigned Andhra Pradesh (Code `37`).
+
+### Official GSTN State Codes Master Table
+
+| Code | State / Union Territory Name | Entity Type | QRMP Category | GSTR-3B Due Date (QRMP) | Article 279A(4)(g) Exemption Threshold |
+|---|---|---|---|---|---|
+| `01` | Jammu and Kashmir | UT with Legislature | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `02` | Himachal Pradesh | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `03` | Punjab | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `04` | Chandigarh | UT without Legislature | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `05` | Uttarakhand | State | Category 2 | 24th of following month | Special Category (₹20L Goods / ₹20L Services) |
+| `06` | Haryana | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `07` | Delhi | UT with Legislature | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `08` | Rajasthan | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `09` | Uttar Pradesh | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `10` | Bihar | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `11` | Sikkim | State | Category 2 | 24th of following month | Special Category (₹20L Goods / ₹20L Services) |
+| `12` | Arunachal Pradesh | State | Category 2 | 24th of following month | Special Category (₹20L Goods / ₹20L Services) |
+| `13` | Nagaland | State | Category 2 | 24th of following month | Special Category (₹10L Goods / ₹10L Services) |
+| `14` | Manipur | State | Category 2 | 24th of following month | Special Category (₹10L Goods / ₹10L Services) |
+| `15` | Mizoram | State | Category 2 | 24th of following month | Special Category (₹10L Goods / ₹10L Services) |
+| `16` | Tripura | State | Category 2 | 24th of following month | Special Category (₹10L Goods / ₹10L Services) |
+| `17` | Meghalaya | State | Category 2 | 24th of following month | Special Category (₹20L Goods / ₹20L Services) |
+| `18` | Assam | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `19` | West Bengal | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `20` | Jharkhand | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `21` | Odisha | State | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `22` | Chhattisgarh | State | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `23` | Madhya Pradesh | State | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `24` | Gujarat | State | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `25` | Daman and Diu *(Legacy)* | Merged UT | Category 1 | 22nd of following month | Merged into Code 26 |
+| `26` | Dadra and Nagar Haveli and Daman and Diu | UT without Legislature | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `27` | Maharashtra | State | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `28` | Andhra Pradesh (Old) *(Legacy)* | Historical State | Category 1 | 22nd of following month | Replaced by 36 and 37 |
+| `29` | Karnataka | State | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `30` | Goa | State | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `31` | Lakshadweep | UT without Legislature | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `32` | Kerala | State | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `33` | Tamil Nadu | State | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `34` | Puducherry | UT with Legislature | Category 1 | 22nd of following month | Special Category (₹20L Goods / ₹20L Services) |
+| `35` | Andaman and Nicobar Islands | UT without Legislature | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `36` | Telangana | State | Category 1 | 22nd of following month | Special Category (₹20L Goods / ₹20L Services) |
+| `37` | Andhra Pradesh | State | Category 1 | 22nd of following month | Standard (₹40L Goods / ₹20L Services) |
+| `38` | Ladakh | UT without Legislature | Category 2 | 24th of following month | Standard (₹40L Goods / ₹20L Services) |
+| `97` | Other Territory | Continental Shelf / EEZ | N/A | N/A | Governed by Section 7(5)(a) IGST Act |
+| `99` | Centre Jurisdiction | Special / Non-Resident | N/A | N/A | Governed by CBIC Central Jurisdiction |
+
+### CA Confirmation Checklist & Decisions
+- [ ] Confirm that clients registered under merged UT Code `26` can reconcile supplier invoices carrying legacy Code `25`.
+- [ ] Validate that calendar deadlines for QRMP quarterly GSTR-3B automatically dynamically resolve to the 22nd (Category 1) or 24th (Category 2) based strictly on the client's GSTIN state prefix.
+- [ ] Confirm system handling for Special Category states where the goods registration threshold is ₹20 Lakhs (e.g. Uttarakhand, Sikkim) or ₹10 Lakhs (e.g. Nagaland, Manipur) rather than ₹40 Lakhs.
+
+---
+
+## RULE-09: Annual Aggregate Turnover (AATO) Bands & Compliance Thresholds
+
+### Statutory Provisions & Legal Context
+- **Section 2(6) of CGST Act, 2017**: "Aggregate turnover" means the aggregate value of all taxable supplies, exempt supplies, exports of goods or services, and inter-state supplies of persons having the same PAN, computed on an all-India basis, excluding inward supplies liable under reverse charge.
+- **Section 10(1) & 10(2) of CGST Act**: Composition scheme cap of ₹1.5 Crore for manufacturers and traders of goods (₹75 Lakhs for Special Category States).
+- **Notification No. 10/2019-Central Tax**: Exemption threshold of ₹40 Lakhs for exclusive suppliers of goods in standard states.
+- **Proviso to Section 39(1) & Rule 61A**: Taxpayers with aggregate turnover up to ₹5 Crore in preceding FY can opt into the QRMP scheme.
+- **Notification No. 78/2020-Central Tax (dated 15-Oct-2020)**: HSN digit declaration rules:
+  - Turnover $\le$ ₹5 Crore: 4-digit HSN mandatory for B2B supplies (optional for B2C).
+  - Turnover > ₹5 Crore: 6-digit HSN mandatory for all outward supplies (both B2B and B2C).
+- **Rule 48(4) & Notification No. 10/2023-Central Tax (effective 01-Aug-2023)**: Mandatory electronic invoicing (e-invoicing) for registered persons whose aggregate turnover exceeds **₹5 Crore in any preceding financial year** from 2017-18 onwards.
+- **Section 44 Proviso & Notification No. 32/2023-Central Tax**: Annual Return Form GSTR-9 exempted for taxpayers with aggregate turnover up to ₹2 Crore. GSTR-9C reconciliation statement mandatory only for turnover exceeding ₹5 Crore.
+
+### Statutory AATO Band Specifications
+
+```mermaid
+flowchart TD
+    Band1["Band 1: below_40l<br/>Turnover < ₹40 Lakhs"]
+    Band2["Band 2: 40l_to_1_5cr<br/>Turnover ₹40 Lakhs to ₹1.5 Crores"]
+    Band3["Band 3: 1_5cr_to_5cr<br/>Turnover ₹1.5 Crores to ₹5 Crores"]
+    Band4["Band 4: above_5cr<br/>Turnover > ₹5 Crores"]
+
+    Band1 -->|Voluntary Registration| EligibleComposition1[Composition Eligible]
+    Band1 -->|Exclusive Goods| RegistrationExempt[Exemption from Mandatory Registration]
+    Band1 --> GSTR9Exempt1[GSTR-9 Exempted]
+
+    Band2 --> MandatoryReg1[Mandatory Registration]
+    Band2 --> EligibleComposition2[Composition Ceiling: ₹1.5 Cr]
+    Band2 --> EligibleQRMP1[Eligible for QRMP Scheme]
+    Band2 --> HSN4Digit1[4-Digit HSN for B2B]
+
+    Band3 --> IneligibleComposition1[Composition Strictly Ineligible]
+    Band3 --> EligibleQRMP2[QRMP Scheme Ceiling: ₹5 Cr]
+    Band3 --> HSN4Digit2[4-Digit HSN for B2B]
+    Band3 --> GSTR9Mandatory1[Mandatory GSTR-9 Annual Return]
+
+    Band4 --> IneligibleQRMP1[QRMP Ineligible: Mandatory Monthly Filing]
+    Band4 --> MandatoryEInv[Mandatory E-Invoicing: Rule 48-4]
+    Band4 --> HSN6Digit[Mandatory 6-Digit HSN for All Supplies]
+    Band4 --> GSTR9C[Mandatory GSTR-9 & GSTR-9C Reconciliation]
+```
+
+### AATO Band Matrix & Engine Rules
+
+| AATO Band Code | Annual Turnover Range | Permitted Schemes | HSN Digits Required | E-Invoicing Applicable? | Annual Return Obligation |
+|---|---|---|---|---|---|
+| `below_40l` | Below ₹40,00,000 | Regular, QRMP, Composition, Unregistered | 4 Digits (Optional B2C) | No | Exempt (Section 44 Proviso) |
+| `40l_to_1_5cr` | ₹40,00,000 to ₹1,50,00,000 | Regular, QRMP, Composition | 4 Digits (B2B Mandatory) | No | Exempt if $\le$ ₹2 Cr (Notif. 32/2023-CT) |
+| `1_5cr_to_5cr` | ₹1,50,00,001 to ₹5,00,00,000 | Regular, QRMP | 4 Digits (B2B Mandatory) | No | GSTR-9 Mandatory; GSTR-9C Exempt |
+| `above_5cr` | Above ₹5,00,00,000 | Regular Only | 6 Digits (B2B & B2C Mandatory) | **Yes (Mandatory)** | GSTR-9 & GSTR-9C Mandatory |
+
+### CA Confirmation Checklist & Decisions
+- [ ] Confirm that selecting `above_5cr` during client onboarding permanently hides or disables the "Composition" and "QRMP" options in the scheme selector.
+- [ ] Confirm validation rule: For clients with `above_5cr`, outward invoice entries missing valid 6-digit HSN codes must trigger a high-severity compliance warning.
+- [ ] Confirm whether aggregate turnover calculation includes exempt supplies (e.g. sale of printed books under HSN 4901) when checking eligibility for the ₹1.5 Crore composition cap.
+
+---
+
+## RULE-10: Statutory GST Schemes (Regular vs QRMP vs Composition)
+
+### Statutory Provisions & Legal Context
+- **Regular Scheme**: Governed by Sections 37, 38, and 39 of CGST Act. Monthly filing of GSTR-1 by 11th and GSTR-3B by 20th. Full input tax credit available subject to Section 16, 17, and GSTR-2B matching.
+- **QRMP (Quarterly Return Monthly Payment) Scheme**: Governed by Section 39(1) Proviso and Rule 61A. Designed to alleviate compliance overhead for SME taxpayers with turnover up to ₹5 Crore:
+  - Inward credit available via quarterly GSTR-2B.
+  - Optional Invoice Furnishing Facility (IFF) for Month 1 and Month 2 to pass ITC to B2B buyers.
+  - Monthly cash deposit via Form PMT-06 by the 25th using Fixed Sum Method (35%) or Self Assessment Method (SAM).
+  - Quarterly GSTR-1 by 13th and quarterly GSTR-3B by 22nd or 24th.
+- **Composition Levy Scheme**: Governed by Section 10 of CGST Act. Simplified tax framework for small local retailers and traders:
+  - Low fixed tax rate: 1% of turnover (0.5% CGST + 0.5% SGST) for traders and manufacturers of goods.
+  - **Zero Input Tax Credit**: Section 10(2)(d) strictly prohibits availing any ITC.
+  - **No Tax Collection**: The taxpayer cannot issue a Tax Invoice or collect tax from customers. Must issue a "Bill of Supply" with mandatory caption: *"composition taxable person, not eligible to collect tax on supplies"*.
+  - **Prohibition on Inter-State Outward Supplies**: Section 10(2)(a) prohibits making inter-state outward supplies of goods.
+  - Simple quarterly tax payment challan **CMP-08** by the 18th of the month following each quarter; annual return Form **GSTR-4** by 30th April.
+
+### Scheme Comparison Matrix
+
+| Statutory Characteristic | Regular Scheme | QRMP Scheme | Composition Scheme (Section 10) | Unregistered Merchant |
+|---|---|---|---|---|
+| **Turnover Ceiling** | No upper limit | Preceding FY $\le$ ₹5 Crore | Preceding FY $\le$ ₹1.5 Crore (₹75L Special) | Preceding FY < Registration Threshold |
+| **Outward Document Issued** | Tax Invoice (Sec 31) | Tax Invoice (Sec 31) | Bill of Supply (Sec 31(3)(c)) | Retail / Cash Memo |
+| **Tax Charged to Customer?** | Yes (Item GST Rates) | Yes (Item GST Rates) | **No** (Cannot collect tax) | No |
+| **Input Tax Credit (ITC)** | Yes (Full via GSTR-2B) | Yes (Full via GSTR-2B) | **No** (Zero ITC allowed) | No |
+| **Monthly Upload / Return** | GSTR-1 (11th) | Optional IFF B2B (13th) | None | None |
+| **Monthly Tax Payment** | GSTR-3B Cash (20th) | PMT-06 Challan (25th) | None | None |
+| **Quarterly Return** | None (pure monthly) | GSTR-1 (13th) & GSTR-3B (22nd/24th) | Form CMP-08 (18th) | None |
+| **Annual Return** | GSTR-9 / 9C | GSTR-9 / 9C | Form GSTR-4 (30th April) | None |
+| **Inter-State Outward Sales** | Permitted without restriction | Permitted without restriction | **Strictly Prohibited** (Sec 10(2)(a)) | Exempt within thresholds |
+| **Inter-State Inward Purchases** | Permitted (IGST claimed) | Permitted (IGST claimed) | Permitted (IGST costed to expense) | Permitted |
+
+### CA Confirmation Checklist & Decisions
+- [ ] Confirm that if an invoice with inter-state Place of Supply (POS $\neq$ Client State) is entered for a client on the "Composition" scheme, the system generates an immediate error blocking return preparation.
+- [ ] Confirm handling of PMT-06 Fixed Sum Method: Verify whether the 35% calculation applies to total tax paid in cash in the preceding quarter's GSTR-3B, or 100% of net tax if the preceding period was filed monthly.
+- [ ] Confirm that for Composition clients, all purchase bill input tax amounts are automatically categorized as cost of goods rather than entering the electronic credit ledger.
+
+---
+
+## RULE-11: State Jurisdiction Determination & Intra-State vs Inter-State Supply Classification
+
+### Statutory Provisions & Legal Context
+- **Sections 7 and 8 of the Integrated Goods and Services Tax (IGST) Act, 2017**:
+  - **Intra-State Supply (Section 8)**: A supply of goods or services where the **location of the supplier** and the **place of supply (POS)** are in the same State or same Union Territory.
+    $$\text{Tax Levied} = \text{CGST} + \text{SGST} \quad (\text{or } \text{CGST} + \text{UTGST})$$
+  - **Inter-State Supply (Section 7)**: A supply of goods or services where the **location of the supplier** and the **place of supply (POS)** are in:
+    1. Two different States;
+    2. Two different Union Territories; or
+    3. A State and a Union Territory.
+    $$\text{Tax Levied} = \text{IGST}$$
+- **State Jurisdiction Extraction**:
+  - The first two digits of a supplier's GSTIN unambiguously define their primary State Tax Jurisdiction.
+  - Inward purchase supply classification is determined by comparing `supplierGstin.slice(0, 2)` against `clientGstin.slice(0, 2)` (or the designated delivery Place of Supply).
+- **Union Territory Goods and Services Tax Act, 2017 (UTGST Act)**:
+  - Applies exclusively to Union Territories without a legislature: Chandigarh (`04`), Dadra and Nagar Haveli and Daman and Diu (`26`), Lakshadweep (`31`), Andaman and Nicobar Islands (`35`), and Ladakh (`38`).
+  - UTs with their own legislative assemblies (Delhi `07`, Puducherry `34`, Jammu and Kashmir `01`) are governed by their respective State GST (SGST) Acts.
+- **Reporting Unification in GSTR-3B**:
+  - On the official GST Portal, Form GSTR-3B Table 3.1 combines State Tax and Union Territory Tax into a unified column labeled **"State / UT Tax"**.
+
+### Classification Decision Flowchart
+
+```mermaid
+flowchart TD
+    Start[Invoice Ingestion: Supplier GSTIN & Recipient GSTIN] --> Extract[Extract Supplier State Code: Positions 1-2<br/>Extract POS State Code: Positions 1-2]
+    
+    Extract --> Compare{Supplier State == POS State?}
+    
+    Compare -->|YES: Intra-State Supply| CheckUT{Is State a UT without Legislature?<br/>04, 26, 31, 35, 38}
+    CheckUT -->|YES| ApplyCGST_UTGST[Apply CGST + UTGST<br/>Split Rate 50% / 50%]
+    CheckUT -->|NO| ApplyCGST_SGST[Apply CGST + SGST<br/>Split Rate 50% / 50%]
+    
+    Compare -->|NO: Inter-State Supply| ApplyIGST[Apply IGST<br/>Single Tax Component at 100% Rate]
+    
+    ApplyCGST_UTGST --> MapGSTR3B[Map to Table 3.1 & 4A<br/>State/UT Tax Column]
+    ApplyCGST_SGST --> MapGSTR3B
+    ApplyIGST --> MapGSTR3B_IGST[Map to Table 3.1 & 4A<br/>Integrated Tax Column]
+```
+
+### Risk & Financial Exposure if Misclassified
+1. **Wrong Tax Type Deposited (Section 77 CGST Act & Section 19 IGST Act)**:
+   - If an intra-state supply is wrongly reported and paid as IGST (or vice versa), the taxpayer must pay the correct tax (CGST + SGST) and claim a refund for the wrongly paid IGST.
+   - While Section 77(2) waives interest on the correct tax in such cases, the refund cycle locks working capital for months.
+2. **Ineligible ITC Availment**: If a retail shop in Maharashtra (27) pays CGST + SGST on an invoice issued by a supplier in Gujarat (24) showing Gujarat CGST/SGST, the Maharashtra buyer cannot avail that credit. The credit is legally invalid and must be reversed with interest.
+
+### CA Confirmation Checklist & Decisions
+- [ ] Confirm that invoice OCR extraction flags any invoice where `Supplier State != Recipient State` but the invoice footer calculates CGST + SGST instead of IGST.
+- [ ] Confirm that UTGST transactions are stored internally with a distinct `tax_type: 'utgst'` flag for ledger precision, but mapped to the `"state_ut_tax"` column in GSTR-1 and GSTR-3B offline JSON exports.
+- [ ] Confirm place of supply determination for over-the-counter (OTC) retail cash sales where recipient GSTIN is absent (defaults to supplier's state under Section 10(1)(c) of IGST Act).
+
+---
 
 Please complete this sign-off section upon reviewing and ratifying the provisions outlined in this document.
 
