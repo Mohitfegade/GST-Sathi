@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ComingNext } from '@/components/clients/ComingNext';
 import { OwnerAccess } from '@/components/clients/OwnerAccess';
 import type { ClientListItem } from '@/lib/clients/types';
@@ -12,6 +14,8 @@ export interface DetailTabsProps {
   client: ClientListItem;
   clientRecord?: Client | null;
   isFirmAdmin: boolean;
+  initialTab?: ClientTabId;
+  children?: React.ReactNode;
 }
 
 interface TabOption {
@@ -30,8 +34,18 @@ export function DetailTabs({
   client,
   clientRecord,
   isFirmAdmin,
+  initialTab,
+  children,
 }: DetailTabsProps) {
-  const [activeTab, setActiveTab] = useState<ClientTabId>('overview');
+  const pathname = usePathname();
+  const isOnBillsRoute = pathname?.endsWith('/bills') || pathname?.includes('/bills');
+
+  // Determine starting tab from pathname or initialTab prop
+  const defaultTab: ClientTabId = isOnBillsRoute
+    ? 'bills'
+    : (initialTab ?? 'overview');
+
+  const [activeTab, setActiveTab] = useState<ClientTabId>(defaultTab);
 
   return (
     <div className="space-y-6">
@@ -43,6 +57,48 @@ export function DetailTabs({
       >
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
+
+          const tabClasses = `inline-flex items-center px-4 py-3 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 min-h-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            isActive
+              ? 'border-accent text-ink'
+              : 'border-transparent text-muted hover:text-ink hover:border-line'
+          }`;
+
+          // If on the bills page and clicking Overview, navigate back to client overview
+          if (tab.id === 'overview' && isOnBillsRoute) {
+            return (
+              <Link
+                key={tab.id}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`tabpanel-${tab.id}`}
+                id={`tab-${tab.id}`}
+                href={`/app/clients/${client.id}`}
+                className={tabClasses}
+              >
+                {tab.label}
+              </Link>
+            );
+          }
+
+          // If on overview page and clicking Bills, navigate cleanly to the bills route
+          if (tab.id === 'bills' && !isOnBillsRoute) {
+            return (
+              <Link
+                key={tab.id}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`tabpanel-${tab.id}`}
+                id={`tab-${tab.id}`}
+                href={`/app/clients/${client.id}/bills`}
+                className={tabClasses}
+              >
+                {tab.label}
+              </Link>
+            );
+          }
+
+          // In-page tab button switching for local tabs
           return (
             <button
               key={tab.id}
@@ -52,11 +108,7 @@ export function DetailTabs({
               id={`tab-${tab.id}`}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center px-4 py-3 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 min-h-[48px] ${
-                isActive
-                  ? 'border-accent text-ink'
-                  : 'border-transparent text-muted hover:text-ink hover:border-line'
-              }`}
+              className={tabClasses}
             >
               {tab.label}
             </button>
@@ -153,12 +205,24 @@ export function DetailTabs({
           </div>
         )}
 
+        {/* Bills Tab Panel: Renders live bills content (Coming next is removed) */}
         {activeTab === 'bills' && (
           <div role="tabpanel" id="tabpanel-bills" aria-labelledby="tab-bills">
-            <ComingNext
-              title="Purchase and sales bills"
-              description="Upload PDF and photo bills from shop owners, extract line items, and organize vouchers for the return period."
-            />
+            {children ? (
+              children
+            ) : (
+              <div className="p-8 text-center rounded-xl border border-line bg-surface/30 space-y-4">
+                <p className="text-base text-ink font-medium">
+                  Manage purchase and sales bills for this client.
+                </p>
+                <Link
+                  href={`/app/clients/${client.id}/bills`}
+                  className="inline-flex items-center justify-center min-h-[48px] px-6 py-2.5 rounded-[8px] bg-ink text-background font-medium hover:bg-ink/90 transition-colors"
+                >
+                  Go to bills dashboard →
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
