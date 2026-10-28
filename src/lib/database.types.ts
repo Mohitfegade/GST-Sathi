@@ -688,11 +688,23 @@ isOneToOne: false
             "accept_client_invite":
 { Args: { "p_token": string }; Returns: string
                            },
+"check_upload_quota":
+{ Args: { "client_id_param": string,"n"?: number }; Returns: boolean
+                           },
+"cleanup_stale_uploads":
+{ Args: { "client_id_param": string }; Returns: number
+                           },
+"confirm_document_upload":
+{ Args: { "document_id_param": string }; Returns: Json
+                           },
 "create_client_invite":
 { Args: { "p_client_id": string }; Returns: string
                            },
 "create_firm_with_admin":
 { Args: { "firm_name": string }; Returns: string
+                           },
+"fail_document_upload":
+{ Args: { "document_id_param": string,"reason"?: string }; Returns: Json
                            },
 "has_client_access":
 { Args: { "client": string }; Returns: boolean
