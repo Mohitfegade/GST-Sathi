@@ -1,0 +1,3 @@
+-- Migration 120: Uploads Support
+-- Indexing, quota check function, stale cleanup function, and security-definer RPCs
+-- for direct-to-storage document uploads.
