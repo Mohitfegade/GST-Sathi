@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { connection } from 'next/server';
 import { requireClientAccess } from '@/lib/auth/roles';
 import { createServerClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
@@ -32,7 +33,10 @@ function formatDateTime(isoString: string): string {
   }
 }
 
+export const instant = false;
+
 export default async function OwnerBillsPage({ searchParams }: BillsPageProps) {
+  await connection();
   const params = searchParams ? await searchParams : {};
   const requestedClientId =
     typeof params?.client === 'string' ? params.client : undefined;

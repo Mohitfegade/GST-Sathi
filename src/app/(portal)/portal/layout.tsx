@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 import { requireClientAccess } from '@/lib/auth/roles';
 import { createServerClient } from '@/lib/supabase/server';
 
@@ -18,6 +19,7 @@ export default async function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await connection();
   const session = await requireClientAccess();
 
   const businessName =

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 import { requireFirmRole } from '@/lib/auth/roles';
 import { createServerClient } from '@/lib/supabase/server';
 
@@ -16,6 +17,7 @@ export default async function AccountantAppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await connection();
   const session = await requireFirmRole('staff');
 
   async function logoutAction() {

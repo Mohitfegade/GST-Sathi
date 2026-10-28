@@ -28,3 +28,4 @@ These rules apply across the entire codebase at all times.
 ## 4. Computation & Data Integrity
 - **Tax Math**: Tax calculations must strictly be deterministic code (never LLM-generated output).
 - **Data Logic**: No realistic-looking hardcoded data in application logic or business rules. Use explicit fixtures or dynamic inputs.
+- **Next.js 16 Dynamic Rendering & Clock Guard**: Never read time (`Date.now()`, `new Date()`) or randomness (`Math.random()`, `crypto.randomUUID()`) during server render before dynamic data access. Call `await connection()` from `'next/server'` or await request context first, wrap dynamic components in `<Suspense>`, and follow `docs/NEXT16_DYNAMIC.md`.

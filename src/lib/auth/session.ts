@@ -58,6 +58,15 @@ interface ClientAccessRow {
 export async function getSessionContext(
   customClient?: SupabaseClient
 ): Promise<SessionContext | null> {
+  if (!customClient) {
+    try {
+      const { connection } = await import('next/server');
+      await connection();
+    } catch {
+      // outside Next.js request context (e.g. unit tests)
+    }
+  }
+
   const supabase = customClient ?? (await createServerClient());
 
   const {

@@ -12,6 +12,15 @@ import type { SessionContext } from './types';
 export async function requireUser(
   customClient?: SupabaseClient
 ): Promise<SessionContext> {
+  if (!customClient) {
+    try {
+      const { connection } = await import('next/server');
+      await connection();
+    } catch {
+      // outside Next.js request context (e.g. unit tests)
+    }
+  }
+
   const session = await getSessionContext(customClient);
 
   if (!session) {

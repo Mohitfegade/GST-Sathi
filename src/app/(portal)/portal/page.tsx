@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { connection } from 'next/server';
 import { requireClientAccess } from '@/lib/auth/roles';
 import { createServerClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
@@ -26,7 +27,10 @@ function formatDate(isoString: string): string {
   }
 }
 
+export const instant = false;
+
 export default async function PortalPage({ searchParams }: PortalPageProps) {
+  await connection();
   const session = await requireClientAccess();
   const params = searchParams ? await searchParams : {};
   const requestedClientId =
