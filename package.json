@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "check-tokens": "node scripts/check-tokens.mjs",
     "dev:invite": "node scripts/dev-invite.mjs",
+    "dev:upload": "node scripts/dev-upload.mjs",
+    "uploads:cleanup": "node scripts/cleanup-uploads.mjs",
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
     "db:seed:clients": "node scripts/seed-clients.mjs",
