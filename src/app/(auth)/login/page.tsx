@@ -61,6 +61,33 @@ function LoginForm() {
 
         {/* Card */}
         <div className="bg-surface border border-line rounded-[12px] p-6 sm:p-8">
+          {/* Dev Preview Quick Bypass */}
+          <div className="mb-6 p-4 rounded-[10px] bg-accent/10 border border-accent/20">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-accent" />
+              <span className="text-xs font-bold uppercase tracking-wider text-accent">
+                Dev UI/UX Preview
+              </span>
+            </div>
+            <p className="text-xs text-muted mb-3">
+              Direct access to test inside UI/UX without credentials:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <a
+                href="/app"
+                className="inline-flex items-center justify-center py-2.5 px-3 rounded-lg bg-accent text-on-accent text-xs font-semibold hover:bg-accent-hover transition-colors min-h-[44px] shadow-sm text-center"
+              >
+                Accountant Workspace →
+              </a>
+              <a
+                href="/portal"
+                className="inline-flex items-center justify-center py-2.5 px-3 rounded-lg border border-line bg-surface text-ink text-xs font-semibold hover:bg-surface/80 transition-colors min-h-[44px] shadow-sm text-center"
+              >
+                Client Portal →
+              </a>
+            </div>
+          </div>
+
           {/* Mode Switcher Tabs */}
           <div
             role="tablist"

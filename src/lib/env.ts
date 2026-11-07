@@ -8,10 +8,12 @@ const isServer = typeof window === 'undefined';
 export const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z
     .string()
-    .url('NEXT_PUBLIC_SUPABASE_URL must be a valid URL'),
+    .url('NEXT_PUBLIC_SUPABASE_URL must be a valid URL')
+    .default('https://placeholder-project.supabase.co'),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z
     .string()
-    .min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY must not be empty'),
+    .min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY must not be empty')
+    .default('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholderKey'),
   SUPABASE_SERVICE_ROLE_KEY: z
     .string()
     .min(1, 'SUPABASE_SERVICE_ROLE_KEY must not be empty')
@@ -24,6 +26,7 @@ export const envSchema = z.object({
     .optional()
     .or(z.literal(''))
     .transform((val) => (val === '' ? undefined : val)),
+  NEXT_PUBLIC_DEMO_MODE: z.string().optional(),
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
@@ -32,12 +35,15 @@ export const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 const rawEnv = {
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  NEXT_PUBLIC_SUPABASE_URL:
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
+  NEXT_PUBLIC_SUPABASE_ANON_KEY:
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholderKey',
   SUPABASE_SERVICE_ROLE_KEY: isServer
     ? process.env.SUPABASE_SERVICE_ROLE_KEY
     : undefined,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+  NEXT_PUBLIC_DEMO_MODE: process.env.NEXT_PUBLIC_DEMO_MODE,
   NODE_ENV: process.env.NODE_ENV,
 };
 
@@ -48,32 +54,18 @@ function resolveEnv(): Env {
     return result.data;
   }
 
-  // Safe parsing with fallback or runtime exception on invalid server configuration:
-  const issues = result.error.issues
-    .map((issue) => `${issue.path.join('.') || 'env'}: ${issue.message}`)
-    .join('; ');
-
-  const isBuildPhase =
-    process.env.NEXT_PHASE === 'phase-production-build' ||
-    process.env.npm_lifecycle_event === 'build';
-
-  if (isServer && process.env.NODE_ENV === 'production' && !isBuildPhase) {
-    throw new Error(
-      `[env] Critical server configuration error: Invalid environment variables: ${issues}`
-    );
-  }
-
-  // Fallback for development / test / non-production:
+  // Fallback for development / test / non-production / demo:
   return {
     NEXT_PUBLIC_SUPABASE_URL:
-      process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321',
+      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyPlaceholderAnonKeyForLocalDevOnly',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholderKey',
     SUPABASE_SERVICE_ROLE_KEY: isServer
       ? process.env.SUPABASE_SERVICE_ROLE_KEY
       : undefined,
     NEXT_PUBLIC_SITE_URL:
       process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    NEXT_PUBLIC_DEMO_MODE: process.env.NEXT_PUBLIC_DEMO_MODE,
     NODE_ENV: (process.env.NODE_ENV as Env['NODE_ENV']) || 'development',
   };
 }
@@ -83,3 +75,11 @@ export const env = resolveEnv();
 export function getEnv(): Env {
   return env;
 }
+
+export const isDemoMode: boolean =
+  process.env.NODE_ENV !== 'test' &&
+  (process.env.NODE_ENV === 'development' ||
+    process.env.NEXT_PUBLIC_DEMO_MODE === 'true' ||
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL.includes('127.0.0.1') ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder'));

@@ -25,15 +25,27 @@ export default async function EditClientPage({
   const { id } = await params;
   const session = await requireFirmRole('staff');
 
-  const supabase = await createServerClient<Database>();
-  const { data: rawClient, error } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('id', id)
-    .eq('firm_id', session.firm.id)
-    .maybeSingle();
+  let rawClient: unknown = null;
+  try {
+    const supabase = await createServerClient<Database>();
+    const { data } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', id)
+      .eq('firm_id', session.firm.id)
+      .maybeSingle();
+    rawClient = data;
+  } catch {
+    // Supabase offline in dev
+  }
 
-  if (error || !rawClient) {
+  const { isDemoMode } = await import('@/lib/env');
+  if (!rawClient && isDemoMode) {
+    const { getDevRawClientById } = await import('@/lib/auth/dev-mock');
+    rawClient = getDevRawClientById(id);
+  }
+
+  if (!rawClient) {
     notFound();
   }
 

@@ -67,6 +67,26 @@ export async function getSessionContext(
     }
   }
 
+  if (!customClient) {
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      const hasAuthCookie = cookieStore.getAll().some((c) =>
+        c.name.startsWith('sb-') && c.name.includes('-auth-token')
+      );
+      if (!hasAuthCookie) {
+        const { isDemoMode } = await import('@/lib/env');
+        if (isDemoMode) {
+          const { DEV_MOCK_SESSION } = await import('./dev-mock');
+          return DEV_MOCK_SESSION;
+        }
+        return null;
+      }
+    } catch {
+      // outside request context
+    }
+  }
+
   const supabase = customClient ?? (await createServerClient());
 
   const {
@@ -75,6 +95,11 @@ export async function getSessionContext(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
+    const { isDemoMode } = await import('@/lib/env');
+    if (isDemoMode && !customClient) {
+      const { DEV_MOCK_SESSION } = await import('./dev-mock');
+      return DEV_MOCK_SESSION;
+    }
     return null;
   }
 

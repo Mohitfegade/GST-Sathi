@@ -39,13 +39,25 @@ export default async function ClientDetailPage({
   }
 
   // Fetch full record for deep attributes (turnover band, supply types, language)
-  const supabase = await createServerClient();
-  const { data: rawRecord } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('id', id)
-    .eq('firm_id', session.firm.id)
-    .maybeSingle();
+  let rawRecord: unknown = null;
+  try {
+    const supabase = await createServerClient();
+    const { data } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', id)
+      .eq('firm_id', session.firm.id)
+      .maybeSingle();
+    rawRecord = data;
+  } catch {
+    // Supabase offline in dev
+  }
+
+  const { isDemoMode } = await import('@/lib/env');
+  if (!rawRecord && isDemoMode) {
+    const { getDevRawClientById } = await import('@/lib/auth/dev-mock');
+    rawRecord = getDevRawClientById(id);
+  }
 
   const isFirmAdmin = session.firm.role === 'admin';
 

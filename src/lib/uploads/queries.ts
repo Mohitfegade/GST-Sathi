@@ -68,43 +68,76 @@ export async function listDocuments(
     };
   }
 
-  const supabase = client ?? (await createServerClient<Database>());
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-
-  let query = supabase
-    .from('documents')
-    .select('*', { count: 'exact' })
-    .eq('client_id', clientId.trim())
-    .is('deleted_at', null);
-
-  if (filters.status && filters.status !== 'all') {
-    query = query.eq('status', filters.status);
+  if (!client) {
+    let hasAuthCookie = false;
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      hasAuthCookie = cookieStore.getAll().some((c) =>
+        c.name.startsWith('sb-') && c.name.includes('-auth-token')
+      );
+    } catch {
+      // outside request context
+    }
+    if (!hasAuthCookie) {
+      return {
+        items: [],
+        total: 0,
+        page,
+        pageSize,
+        totalPages: 0,
+      };
+    }
   }
 
-  if (filters.periodFp && filters.periodFp !== 'all') {
-    query = query.eq('period_fp', filters.periodFp);
+  try {
+    const supabase = client ?? (await createServerClient<Database>());
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabase
+      .from('documents')
+      .select('*', { count: 'exact' })
+      .eq('client_id', clientId.trim())
+      .is('deleted_at', null);
+
+    if (filters.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status);
+    }
+
+    if (filters.periodFp && filters.periodFp !== 'all') {
+      query = query.eq('period_fp', filters.periodFp);
+    }
+
+    query = query.order('created_at', { ascending: false });
+    query = query.range(from, to);
+
+    const { data, count, error } = await query;
+
+    if (error) {
+      if (!client) {
+        return { items: [], total: 0, page, pageSize, totalPages: 0 };
+      }
+      throw error;
+    }
+
+    const total = count ?? 0;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+    const items = (data ?? []).map(mapRowToDocumentListItem);
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
+  } catch (err) {
+    if (!client) {
+      return { items: [], total: 0, page, pageSize, totalPages: 0 };
+    }
+    throw err;
   }
-
-  query = query.order('created_at', { ascending: false });
-  query = query.range(from, to);
-
-  const { data, count, error } = await query;
-
-  if (error) {
-    throw error;
-  }
-
-  const total = count ?? 0;
-  const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
-
-  return {
-    items: (data ?? []).map(mapRowToDocumentListItem),
-    total,
-    page,
-    pageSize,
-    totalPages,
-  };
 }
 
 /**
@@ -152,6 +185,22 @@ export async function createPreviewUrl(
     return null;
   }
 
+  if (!client) {
+    let hasAuthCookie = false;
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      hasAuthCookie = cookieStore.getAll().some((c) =>
+        c.name.startsWith('sb-') && c.name.includes('-auth-token')
+      );
+    } catch {
+      // outside request context
+    }
+    if (!hasAuthCookie) {
+      return null;
+    }
+  }
+
   try {
     const supabase = client ?? (await createServerClient<Database>());
     const { data, error } = await supabase.storage
@@ -193,43 +242,69 @@ export async function getDocumentStatusCounts(
     return counts;
   }
 
-  const supabase = client ?? (await createServerClient<Database>());
-
-  const { data, error } = await supabase
-    .from('documents')
-    .select('status')
-    .eq('client_id', clientId.trim())
-    .is('deleted_at', null);
-
-  if (error) {
-    throw error;
-  }
-
-  if (data) {
-    for (const row of data) {
-      counts.total += 1;
-      switch (row.status) {
-        case 'uploaded':
-          counts.uploaded += 1;
-          break;
-        case 'queued':
-          counts.queued += 1;
-          break;
-        case 'processing':
-          counts.processing += 1;
-          break;
-        case 'needs_review':
-          counts.needsReview += 1;
-          break;
-        case 'done':
-          counts.done += 1;
-          break;
-        case 'failed':
-          counts.failed += 1;
-          break;
-      }
+  if (!client) {
+    let hasAuthCookie = false;
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      hasAuthCookie = cookieStore.getAll().some((c) =>
+        c.name.startsWith('sb-') && c.name.includes('-auth-token')
+      );
+    } catch {
+      // outside request context
+    }
+    if (!hasAuthCookie) {
+      return counts;
     }
   }
 
-  return counts;
+  try {
+    const supabase = client ?? (await createServerClient<Database>());
+
+    const { data, error } = await supabase
+      .from('documents')
+      .select('status')
+      .eq('client_id', clientId.trim())
+      .is('deleted_at', null);
+
+    if (error) {
+      if (!client) {
+        return counts;
+      }
+      throw error;
+    }
+
+    if (data) {
+      for (const row of data) {
+        counts.total += 1;
+        switch (row.status) {
+          case 'uploaded':
+            counts.uploaded += 1;
+            break;
+          case 'queued':
+            counts.queued += 1;
+            break;
+          case 'processing':
+            counts.processing += 1;
+            break;
+          case 'needs_review':
+            counts.needsReview += 1;
+            break;
+          case 'done':
+            counts.done += 1;
+            break;
+          case 'failed':
+            counts.failed += 1;
+            break;
+        }
+      }
+    }
+
+    return counts;
+  } catch (err) {
+    if (!client) {
+      return counts;
+    }
+    throw err;
+  }
 }

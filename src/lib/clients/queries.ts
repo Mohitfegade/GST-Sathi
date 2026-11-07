@@ -190,65 +190,99 @@ export async function listClients(
   client?: SupabaseClient<Database>,
   firmId?: string
 ): Promise<PaginatedClients> {
-  const { supabase, firmId: resolvedFirmId } = await getClientAndFirm(client, firmId);
-
-  const page = Math.max(1, Number.isFinite(filters.page) ? Math.floor(filters.page!) : 1);
-  const pageSize = PAGE_SIZE;
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-
-  let query = supabase
-    .from('clients')
-    .select('*', { count: 'exact' })
-    .eq('firm_id', resolvedFirmId)
-    .is('deleted_at', null);
-
-  // Filter by scheme if specified and !== 'all'
-  if (filters.scheme && filters.scheme !== 'all') {
-    query = query.eq('scheme', filters.scheme);
-  }
-
-  // Search filter: case-insensitive partial match on legal_name, trade_name, or gstin
-  if (filters.search && filters.search.trim()) {
-    const term = filters.search.trim().replace(/[,()]/g, '');
-    if (term) {
-      query = query.or(
-        `legal_name.ilike.%${term}%,trade_name.ilike.%${term}%,gstin.ilike.%${term}%`
+  const { isDemoMode } = await import('@/lib/env');
+  if (isDemoMode && !client) {
+    let hasAuthCookie = false;
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      hasAuthCookie = cookieStore.getAll().some((c) =>
+        c.name.startsWith('sb-') && c.name.includes('-auth-token')
       );
+    } catch {
+      // outside request context
+    }
+    if (!hasAuthCookie) {
+      const { queryDevClients } = await import('@/lib/auth/dev-mock');
+      return queryDevClients(filters);
     }
   }
 
-  // Order by created_at desc for stable, recent-first pagination
-  query = query.order('created_at', { ascending: false });
+  try {
+    const { supabase, firmId: resolvedFirmId } = await getClientAndFirm(client, firmId);
 
-  // Page slice
-  query = query.range(from, to);
+    const page = Math.max(1, Number.isFinite(filters.page) ? Math.floor(filters.page!) : 1);
+    const pageSize = PAGE_SIZE;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
-  const { data, count, error } = await query;
+    let query = supabase
+      .from('clients')
+      .select('*', { count: 'exact' })
+      .eq('firm_id', resolvedFirmId)
+      .is('deleted_at', null);
 
-  if (error) {
-    throw error;
+    // Filter by scheme if specified and !== 'all'
+    if (filters.scheme && filters.scheme !== 'all') {
+      query = query.eq('scheme', filters.scheme);
+    }
+
+    // Search filter: case-insensitive partial match on legal_name, trade_name, or gstin
+    if (filters.search && filters.search.trim()) {
+      const term = filters.search.trim().replace(/[,()]/g, '');
+      if (term) {
+        query = query.or(
+          `legal_name.ilike.%${term}%,trade_name.ilike.%${term}%,gstin.ilike.%${term}%`
+        );
+      }
+    }
+
+    // Order by created_at desc for stable, recent-first pagination
+    query = query.order('created_at', { ascending: false });
+
+    // Page slice
+    query = query.range(from, to);
+
+    const { data, count, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    const rawClients = data ?? [];
+    const enriched = await enrichClientsWithDetails(rawClients, supabase);
+
+    // If status filter is passed, filter items
+    let items = enriched;
+    if (filters.status && filters.status !== 'all') {
+      items = items.filter((item) => item.status_label === filters.status);
+    }
+
+    const totalCount = count ?? 0;
+
+    const { isDemoMode } = await import('@/lib/env');
+    if (totalCount === 0 && !client && isDemoMode) {
+      const { queryDevClients } = await import('@/lib/auth/dev-mock');
+      return queryDevClients(filters);
+    }
+
+    const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / pageSize);
+
+    return {
+      items,
+      totalCount,
+      currentPage: page,
+      pageSize,
+      totalPages,
+    };
+  } catch (err) {
+    const { isDemoMode } = await import('@/lib/env');
+    if (isDemoMode && !client) {
+      const { queryDevClients } = await import('@/lib/auth/dev-mock');
+      return queryDevClients(filters);
+    }
+    throw err;
   }
-
-  const rawClients = data ?? [];
-  const enriched = await enrichClientsWithDetails(rawClients, supabase);
-
-  // If status filter is passed, filter items
-  let items = enriched;
-  if (filters.status && filters.status !== 'all') {
-    items = items.filter((item) => item.status_label === filters.status);
-  }
-
-  const totalCount = count ?? 0;
-  const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / pageSize);
-
-  return {
-    items,
-    totalCount,
-    currentPage: page,
-    pageSize,
-    totalPages,
-  };
 }
 
 /**
@@ -265,21 +299,53 @@ export async function getClientById(
     return null;
   }
 
-  const { supabase, firmId: resolvedFirmId } = await getClientAndFirm(client, firmId);
-
-  const { data, error } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('firm_id', resolvedFirmId)
-    .eq('id', id.trim())
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
+  const { isDemoMode } = await import('@/lib/env');
+  if (isDemoMode && !client) {
+    let hasAuthCookie = false;
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      hasAuthCookie = cookieStore.getAll().some((c) =>
+        c.name.startsWith('sb-') && c.name.includes('-auth-token')
+      );
+    } catch {
+      // outside request context
+    }
+    if (!hasAuthCookie) {
+      const { getDevClientById } = await import('@/lib/auth/dev-mock');
+      return getDevClientById(id);
+    }
   }
 
-  const [enriched] = await enrichClientsWithDetails([data], supabase);
-  return enriched ?? null;
+  try {
+    const { supabase, firmId: resolvedFirmId } = await getClientAndFirm(client, firmId);
+
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('firm_id', resolvedFirmId)
+      .eq('id', id.trim())
+      .maybeSingle();
+
+    if (error || !data) {
+      const { isDemoMode } = await import('@/lib/env');
+      if (isDemoMode && !client) {
+        const { getDevClientById } = await import('@/lib/auth/dev-mock');
+        return getDevClientById(id);
+      }
+      return null;
+    }
+
+    const [enriched] = await enrichClientsWithDetails([data], supabase);
+    return enriched ?? null;
+  } catch (err) {
+    const { isDemoMode } = await import('@/lib/env');
+    if (isDemoMode && !client) {
+      const { getDevClientById } = await import('@/lib/auth/dev-mock');
+      return getDevClientById(id);
+    }
+    return null;
+  }
 }
 
 /**
@@ -290,33 +356,63 @@ export async function getClientCounts(
   client?: SupabaseClient<Database>,
   firmId?: string
 ): Promise<{ total: number; active: number; archived: number }> {
-  const { supabase, firmId: resolvedFirmId } = await getClientAndFirm(client, firmId);
-
-  const [activeRes, archivedRes] = await Promise.all([
-    supabase
-      .from('clients')
-      .select('*', { count: 'exact', head: true })
-      .eq('firm_id', resolvedFirmId)
-      .is('deleted_at', null),
-    supabase
-      .from('clients')
-      .select('*', { count: 'exact', head: true })
-      .eq('firm_id', resolvedFirmId)
-      .not('deleted_at', 'is', null),
-  ]);
-
-  if (activeRes.error) {
-    throw activeRes.error;
-  }
-  if (archivedRes.error) {
-    throw archivedRes.error;
+  const { isDemoMode } = await import('@/lib/env');
+  if (isDemoMode && !client) {
+    let hasAuthCookie = false;
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      hasAuthCookie = cookieStore.getAll().some((c) =>
+        c.name.startsWith('sb-') && c.name.includes('-auth-token')
+      );
+    } catch {
+      // outside request context
+    }
+    if (!hasAuthCookie) {
+      return { total: 12, active: 12, archived: 0 };
+    }
   }
 
-  const active = activeRes.count ?? 0;
-  const archived = archivedRes.count ?? 0;
-  const total = active + archived;
+  try {
+    const { supabase, firmId: resolvedFirmId } = await getClientAndFirm(client, firmId);
 
-  return { total, active, archived };
+    const [activeRes, archivedRes] = await Promise.all([
+      supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .eq('firm_id', resolvedFirmId)
+        .is('deleted_at', null),
+      supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .eq('firm_id', resolvedFirmId)
+        .not('deleted_at', 'is', null),
+    ]);
+
+    if (activeRes.error) {
+      throw activeRes.error;
+    }
+    if (archivedRes.error) {
+      throw archivedRes.error;
+    }
+
+    const active = activeRes.count ?? 0;
+    const archived = archivedRes.count ?? 0;
+    const total = active + archived;
+
+    const { isDemoMode } = await import('@/lib/env');
+    if (total === 0 && isDemoMode && !client) {
+      return { total: 12, active: 12, archived: 0 };
+    }
+
+    return { total, active, archived };
+  } catch (err) {
+    const { isDemoMode } = await import('@/lib/env');
+    if (isDemoMode && !client) {
+      return { total: 12, active: 12, archived: 0 };
+    }
+    throw err;
+  }
 }
 
 /**

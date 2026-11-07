@@ -49,10 +49,21 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session cookies and retrieve authenticated user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh session cookies and retrieve authenticated user if an auth token exists
+  const allCookies = request.cookies.getAll();
+  const hasAuthCookie = allCookies.some((c) =>
+    c.name.startsWith('sb-') && c.name.includes('-auth-token')
+  );
+
+  let user = null;
+  if (hasAuthCookie) {
+    try {
+      const { data } = await supabase.auth.getUser();
+      user = data.user;
+    } catch {
+      user = null;
+    }
+  }
 
   let session: SessionContext | null = null;
 
@@ -87,6 +98,15 @@ export async function proxy(request: NextRequest) {
       };
     } else {
       session = await getSessionContext(supabase);
+    }
+  } else {
+    const { isDemoMode } = await import('@/lib/env');
+    if (isDemoMode) {
+      const pathname = request.nextUrl.pathname;
+      if (pathname.startsWith('/app') || pathname.startsWith('/portal')) {
+        const { DEV_MOCK_SESSION } = await import('@/lib/auth/dev-mock');
+        session = DEV_MOCK_SESSION;
+      }
     }
   }
 

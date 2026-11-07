@@ -52,40 +52,53 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
   > = {};
 
   if (clientIds.length > 0) {
-    try {
-      const supabase = await createServerClient<Database>();
-      const { data: dbClients } = await supabase
-        .from('clients')
-        .select('id, legal_name, trade_name, gstin')
-        .in('id', clientIds)
-        .is('deleted_at', null);
-
-      if (dbClients) {
-        for (const item of dbClients as Array<{
-          id: string;
-          legal_name?: string | null;
-          trade_name?: string | null;
-          gstin?: string | null;
-        }>) {
-          clientDetailsMap[item.id] = {
-            id: item.id,
-            name: item.trade_name || item.legal_name || 'Business',
-            gstin: item.gstin || '',
-          };
-        }
-      }
-    } catch (error) {
-      console.error('Error loading client details:', error);
-    }
-
-    // Fallback for any client missing from DB query result
-    for (const c of session.clients) {
-      if (!clientDetailsMap[c.id]) {
+    const { isDemoMode } = await import('@/lib/env');
+    if (isDemoMode) {
+      const { RAW_DEV_CLIENTS } = await import('@/lib/auth/dev-mock');
+      for (const c of session.clients) {
+        const match = RAW_DEV_CLIENTS.find((r) => r.id === c.id);
         clientDetailsMap[c.id] = {
           id: c.id,
-          name: c.name || 'Business',
-          gstin: '',
+          name: match?.trade_name || match?.legal_name || c.name || 'Business',
+          gstin: match?.gstin || '27FAKES1234A1ZJ',
         };
+      }
+    } else {
+      try {
+        const supabase = await createServerClient<Database>();
+        const { data: dbClients } = await supabase
+          .from('clients')
+          .select('id, legal_name, trade_name, gstin')
+          .in('id', clientIds)
+          .is('deleted_at', null);
+
+        if (dbClients) {
+          for (const item of dbClients as Array<{
+            id: string;
+            legal_name?: string | null;
+            trade_name?: string | null;
+            gstin?: string | null;
+          }>) {
+            clientDetailsMap[item.id] = {
+              id: item.id,
+              name: item.trade_name || item.legal_name || 'Business',
+              gstin: item.gstin || '',
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Error loading client details:', error);
+      }
+
+      // Fallback for any client missing from DB query result
+      for (const c of session.clients) {
+        if (!clientDetailsMap[c.id]) {
+          clientDetailsMap[c.id] = {
+            id: c.id,
+            name: c.name || 'Business',
+            gstin: '',
+          };
+        }
       }
     }
   }
